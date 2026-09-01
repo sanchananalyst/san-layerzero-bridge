@@ -2,14 +2,53 @@
 
 These rules apply to every task in this repository. The bridge protects an existing canonical asset, so preserving backing and administrative control is more important than speed.
 
-## Phase boundary
+## Active Execution Phase: Phase 5A — Production Readiness
 
-- The current scope is Phase 3.6 pre-deployment validation only: EVM bridge emergency controls, local builds/runtime tests, read-only RPC inspection, testnet planning, source audit, official metadata resolution, documentation, and program-identity checks.
-- Do not deploy contracts or Solana programs.
-- Do not run LayerZero wiring, ownership-transfer, peer-setting, send, retry, clear, skip, nilify, burn, or other transaction-producing tasks against any live network.
-- Do not make mainnet or testnet transactions. Read-only RPC calls and local Hardhat/Foundry/Anchor test validators, Docker builds, and mocks are allowed.
-- Do not create the OFT Store, escrow, adapter, peer accounts, or any other on-chain account in Phase 3.
-- Stop before Phase 4. A human must explicitly authorize a later phase.
+Phase 5A is PRE-MAINNET and READ-ONLY with respect to all blockchains.
+
+Phase 5A MAY:
+
+- inspect Solana mainnet read-only
+- inspect Robinhood Chain mainnet read-only
+- resolve current LayerZero production metadata
+- compile production contracts/programs
+- run tests
+- produce Docker/verifiable builds
+- prepare production configuration
+- compare testnet lessons against production code
+- prepare deployment scripts and runbooks
+- prepare governance/multisig handoff procedures
+- perform local simulations
+- perform secret/key-material scans
+
+Phase 5A MUST NOT:
+
+- submit any blockchain transaction
+- deploy any mainnet program
+- deploy any mainnet contract
+- create the real SAN OFT Adapter
+- create the real SAN OFT Store
+- create SAN escrow
+- wire LayerZero mainnet
+- set peers
+- move SAN
+- approve SAN
+- burn SAN
+- mint SAN
+- create liquidity
+- use production private keys
+- change live authorities
+- proceed to Phase 5B
+
+Canonical SAN mint:
+
+GQz5ThKHNcuAvMKA8rCPSdoFUoApk9Fi8qB9m3Gqpump
+
+Production Solana OFT program ID:
+
+9myHzfqsbJfGbYxpCvVCYqLaB4Co1RCo2a8T4QSkTvcD
+
+Phase 5A must stop with zero mainnet transactions.
 
 ## Keys and authorities
 
