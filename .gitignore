@@ -1,6 +1,8 @@
 .anchor
 node_modules
 .env
+.env.*
+!.env.example
 coverage
 coverage.json
 target
@@ -24,3 +26,4 @@ pnpm-error.log
 # Editor and OS files
 .DS_Store
 .idea
+*-keypair.json

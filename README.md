@@ -12,9 +12,11 @@
  <a href="https://docs.layerzero.network/" style="color: #a77dff">LayerZero Docs</a>
 </p>
 
-<h1 align="center">Solana-EVM Omnichain Fungible Token (OFT) Example</h1>
+<h1 align="center">SAN LayerZero V2 Bridge</h1>
 
-<p align="center">Template project for a cross-chain token (<a href="https://docs.layerzero.network/v2/concepts/applications/oft-standard">OFT</a>) powered by the LayerZero protocol. This example primarily involves Solana and EVM. There are also additional instructions for wiring to Aptos.</p>
+<p align="center">Phase 1 source and tests for bridging canonical SAN from Solana to a standard LayerZero OFT representation on Robinhood Chain.</p>
+
+> **SAN Phase 1 safety notice:** This repository is being adapted for the existing canonical SAN token on Solana and a standard `SanOFT` on Robinhood Chain. Do not run any deploy, wire, send, authority, or endpoint recovery command in this README during Phase 1. Do not add private keys or mnemonics. The binding project architecture and unresolved production configuration are documented in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md); repository-wide safety rules are in [`AGENTS.md`](./AGENTS.md). The remaining walkthrough below is upstream starter reference material, not an approved SAN runbook.
 
 ## Table of Contents
 
@@ -111,61 +113,19 @@ cargo install --git https://github.com/solana-foundation/anchor --tag v0.31.1 an
 
 <br>
 
-- Copy `.env.example` into a new `.env`
-- Solana Deployer:
-  - To set up your Solana deployer, you have 3 options:
-    - Use the keypair at the default path of `~/.config/solana/id.json`. For this, no action is needed.
-    - In the `.env`, set `SOLANA_PRIVATE_KEY` - this can be either in base58 string format (i.e. when imported from a wallet) or the Uint8 Array in string format (all in one line, e.g. `[1,1,...1]`).
-    - In the `.env`, set `SOLANA_KEYPAIR_PATH` - the location to the keypair file that you want to use.
-  - Fund your Solana deployer address
-    - Run: `solana airdrop 5 -u devnet`
-    - We recommend that you request 5 devnet SOL, which should be sufficient for this walkthrough. For the example here, we will deploy to **Solana Devnet**.
-    - If you hit rate limits with the above `airdrop` command, you can also use the [official Solana faucet](https://faucet.solana.com/).
-- Solana RPC
-
-  - Also set the `RPC_URL_SOLANA_TESTNET` value. Note that while the naming used here is `TESTNET`, it refers to the [Solana Devnet](https://docs.layerzero.network/v2/developers/evm/technical-reference/deployed-contracts#solana-testnet). We use `TESTNET` to keep it consistent with the existing EVM testnets.
-
-- EVM Deployer:
-
-  - Set up your EVM deployer address/account via the `.env`
-  - You can specify either `MNEMONIC` or `PRIVATE_KEY`:
-
-    ```
-    MNEMONIC="<REDACTED_TEST_MNEMONIC>"
-    or...
-    PRIVATE_KEY="0xabc...def"
-    ```
-
-  - Fund your EVM deployer address with the native tokens of the chains you want to deploy to. This example by default will deploy to the following EVM testnet: **Arbitrum Sepolia**.
+> **SAN Phase 3.5 safety boundary:** only local builds/tests and read-only RPC inspection are approved. Do not execute any deployment, creation, wiring, authority, send, mint, burn, or live transaction command in this starter documentation. `.env.example` is non-secret configuration only.
 
 ## Build
 
-### Prepare the Solana OFT Program keypair
+### SAN program identity
 
-Create the OFT `programId` keypair by running:
-
-```bash
-anchor keys sync -p oft
-```
-
-<details>
-The above command will generate a keypair for the OFT program in your workspace if it doesn't yet exist, and also automatically update `Anchor.toml` to use the generated keypair's public key. The default path for the program's keypair will be `target/deploy/oft-keypair.json`. The program keypair is only used for initial deployment of the program. 
-</details>
-<br>
-View the program ID's based on the generated keypairs:
-
-```
-anchor keys list
-```
-
-You will see an output such as:
+SAN's approved local program ID is pinned in `Anchor.toml` and `programs/oft/src/lib.rs`. Verify source, IDL, ELF, and tracked-file safety after a build with:
 
 ```bash
-endpoint: H3SKp4cL5rpzJDntDa2umKE9AHkGiyss1W8BNDndhHWp
-oft: DLZdefiak8Ur82eWp3Fii59RiCRZn3SjNCmweCdhf1DD
+pnpm san:check-program-id
 ```
 
-Copy the `oft` program ID value for use in the build step later.
+Do not run `anchor keys sync` in this repository: it could replace the approved SAN identity. Ignored local keypairs under `target/deploy/` are test/build material only and are never approved operators.
 
 ### Building the Solana OFT Program
 
@@ -174,10 +134,8 @@ Ensure you have Docker running before running the build command.
 #### Build the Solana OFT program
 
 ```bash
-anchor build -v -e OFT_ID=<OFT_PROGRAM_ID>
+anchor build -v -e OFT_ID=9myHzfqsbJfGbYxpCvVCYqLaB4Co1RCo2a8T4QSkTvcD
 ```
-
-Where `<OFT_PROGRAM_ID>` is replaced with your OFT Program ID copied from the previous step.
 
 > :information_source: For a breakdown of expected rent-exempt costs before deployment, see https://docs.layerzero.network/v2/developers/solana/technical-reference/solana-guidance#previewing-solana-rent-costs.
 
@@ -221,7 +179,7 @@ The above command will create a Solana OFT which will have only the OFT Store as
 pnpm hardhat lz:deploy # follow the prompts
 ```
 
-> For EVM OFTs used in this flow, if you need initial tokens on testnet, open the EVM `contracts/MyOFT.sol` and uncomment `_mint(msg.sender, 100000 * (10 ** 18));` in the constructor. Ensure you remove this line for production.
+> The SAN production contract is `contracts/SanOFT.sol`. It contains no initial supply or arbitrary mint entry point. Do not add one for testing; tests use isolated mocks.
 
 ## Enable Messaging
 
@@ -348,8 +306,9 @@ pnpm hardhat lz:oft:solana:create --eid 40168 --program-id <PROGRAM_ID> --mint <
 
 Before deploying, ensure the following:
 
-- (required) for EVM OFTs used in this flow, if you uncommented the testnet mint line in `contracts/MyOFT.sol`, ensure it is commented out for production
+- (required) verify `contracts/SanOFT.sol` still has no arbitrary mint entry point or initial supply
 - (recommended) you have profiled the gas usage of `lzReceive` on your destination chains
+
 <!-- TODO: mention https://docs.layerzero.network/v2/developers/evm/technical-reference/integration-checklist#set-security-and-executor-configurations after it has been updated to reference the CLI -->
 
 ## Appendix

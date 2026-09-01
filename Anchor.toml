@@ -2,19 +2,19 @@
 anchor_version = "0.31.1"
 
 [features]
-seeds = false
 resolution = false
 skip-lint = false
 
 [programs.localnet]
-oft = "G2BYTnfGCMQAErMZkTBCFSapKevzf6QCjizjXi8hFEtJ"
+endpoint = "8eGbY1MUKMSRoLTSPxen83hPWfT3zTuCVgj2UbS1kKsL"
+oft = "9myHzfqsbJfGbYxpCvVCYqLaB4Co1RCo2a8T4QSkTvcD"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
-wallet = "./junk-id.json"
+cluster = "localnet"
+wallet = "./target/deploy/local-runtime-test-wallet.json"
 
 [scripts]
-test = "npx jest test/anchor"
+test = "npx jest --config jest.config.ts --runInBand test/anchor"

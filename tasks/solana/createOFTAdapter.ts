@@ -11,6 +11,8 @@ import { promptToContinue } from '@layerzerolabs/io-devtools'
 import { EndpointId } from '@layerzerolabs/lz-definitions'
 import { OFT_DECIMALS, oft } from '@layerzerolabs/oft-v2-solana-sdk'
 
+import { validateSanAdapterConfig } from '../../scripts/sanMintConfig'
+
 import {
     TransactionType,
     addComputeUnitInstructions,
@@ -59,6 +61,13 @@ task('lz:oft-adapter:solana:create', 'Creates new OFT Adapter (OFT Store PDA)')
             tokenProgram: tokenProgramStr,
             computeUnitPriceScaleFactor,
         }: CreateOFTAdapterTaskArgs) => {
+            validateSanAdapterConfig({
+                eid,
+                mint: mintStr,
+                configuredMint: process.env.SAN_SOLANA_MINT,
+                tokenProgram: tokenProgramStr,
+            })
+
             const { connection, umi, umiWalletKeyPair, umiWalletSigner } = await deriveConnection(eid)
             const { programId, lockBox, escrowPK, oftStorePda, eddsa } = deriveKeys(programIdStr)
 

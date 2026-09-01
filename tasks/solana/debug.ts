@@ -61,8 +61,7 @@ function getChainKeyForEid(metadata: IMetadata, eid: number): string {
 
 function formatDvnAddresses(addresses: string[], metadata?: IMetadata, chainKey?: string): string {
     const dvnMap = (chainKey && metadata ? metadata[chainKey]?.dvns : undefined) as
-        | Record<string, { canonicalName?: string }>
-        | undefined
+        Record<string, { canonicalName?: string }> | undefined
     return addresses.map((addr) => dvnMap?.[addr]?.canonicalName ?? addr).join(', ')
 }
 
