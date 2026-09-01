@@ -1,74 +1,69 @@
 # Production Governance
 
-## Status and principles
+## Recommendation
 
-This Phase 5A design contains no signer addresses and performs no authority
-change. No personal wallet may remain a final production authority. Signers must
-be organizationally independent, use hardware-backed keys, and have documented
-recovery and conflict-of-interest procedures.
+Use separate **3-of-5** production multisigs by default:
 
-## Recommended authority model
+- a Solana Squads vault controls OFT program upgrade authority, OFT Store admin,
+  Endpoint/OApp delegate, and rate-limit administration; and
+- a Robinhood Safe controls `SanOFT` owner, Endpoint delegate, pause/unpause,
+  rate limits, peer, and LayerZero configuration.
 
-### Solana
+The five signers must avoid shared failure domains, be geographically and
+device-separated, use hardware-backed keys, and have documented recovery and
+offboarding. No signer identity or multisig address is supplied or invented in
+Phase 5A.1. For stronger separation, the Solana upgrade authority may use a
+distinct 4-of-7 body, but only if drills meet the required response latency.
 
-| Authority                     | Target                       | Recommended threshold | Scope                                                              |
-| ----------------------------- | ---------------------------- | --------------------: | ------------------------------------------------------------------ |
-| OFT program upgrade authority | SAN Governance Squads        |                4-of-7 | Program upgrades only; highest-risk authority                      |
-| OFT Store admin               | SAN Bridge Operations Squads |                3-of-5 | Peer, fee, enforced options, rate limits, and store administration |
-| Endpoint delegate             | SAN Bridge Operations Squads |                3-of-5 | LayerZero libraries, ULN, Executor, and delegate configuration     |
-| Pauser                        | SAN Emergency Squads         |                2-of-3 | Pause only; geographically distributed on-call signers             |
-| Unpauser                      | SAN Bridge Operations Squads |                3-of-5 | Re-enable only after incident review and full read-back            |
+## Threshold comparison
 
-The upgrade authority must not be the routine operator. The Store admin and
-Endpoint delegate may share the same 3-of-5 Squads only after humans explicitly
-accept the correlated compromise risk. Every operation requires a human-readable
-transaction preview, independent simulation, and post-transaction read-back.
+| Threshold  | Key loss tolerated | One compromised | Two compromised | Collusion threshold | Response latency              |
+| ---------- | -----------------: | --------------- | --------------- | ------------------: | ----------------------------- |
+| 2-of-3     |                  1 | safe            | control lost    |                   2 | fastest                       |
+| **3-of-5** |              **2** | **safe**        | **safe**        |               **3** | moderate; recommended balance |
+| 4-of-7     |                  3 | safe            | safe            |                   4 | slowest/most coordination     |
 
-### Robinhood Chain
+No threshold prevents malicious governance once its threshold colludes. Shared
+cloud accounts, seed backups, devices, offices, employers, or approval channels
+can make nominal signer count misleading. Proposal creation, decoded simulation,
+approval, execution, and state read-back should be separated where practical.
 
-| Authority         | Target                     | Recommended threshold | Scope                                                          |
-| ----------------- | -------------------------- | --------------------: | -------------------------------------------------------------- |
-| SanOFT owner      | SAN Bridge Governance Safe |                3-of-5 | Peer, ownership, pause/unpause, rate limits, and OApp settings |
-| Endpoint delegate | SAN Bridge Governance Safe |                3-of-5 | LayerZero library/ULN/Executor configuration                   |
+## Role design
 
-The production SanOFT is non-upgradeable. No proxy admin should exist. Launch
-with no Safe modules, guards, or fallback handler unless each is separately
-reviewed. A 3-of-5 owner makes emergency pause dependent on three signers. If the
-approved response-time objective cannot be met, revise and independently audit
-the contract before deployment to add a pause-only guardian while retaining
-unpause and configuration under the owner Safe. Do not lower the owner threshold
-as a shortcut.
+### Solana Squads
 
-## Ceremony and control requirements
+| Role                          | Required control                                                   |
+| ----------------------------- | ------------------------------------------------------------------ |
+| OFT program upgrade authority | 3-of-5 minimum; preferably separate 4-of-7 for infrequent upgrades |
+| OFT Store admin               | 3-of-5; peer, Store, fees, limits, roles                           |
+| Endpoint/OApp delegate        | 3-of-5; libraries, ULN, DVNs, Executor                             |
+| Rate-limit administration     | 3-of-5; exact four-direction policy/read-back                      |
+| Pauser                        | optionally a reviewed 2-of-3 pause-only Squads role                |
+| Unpauser                      | 3-of-5 after incident review and complete read-back                |
 
-- Publish the intended multisig account addresses and independently derive them
-  from the approved signer/threshold configuration before use.
-- Verify every signer on a second communication channel.
-- Require hardware wallets and prohibit shared seed phrases.
-- Run recovery, signer-loss, malicious-proposal, pause, and rejected-unpause
-  drills on a non-production environment.
-- Keep proposal creation separate from final approval where practical.
-- Record decoded instructions/calls, simulation results, and before/after state.
-- Treat delegate, owner, Store admin, and upgrade transfers as separate
-  transactions with a stop/read-back gate after each one.
-- Document replacement and offboarding before any signer receives authority.
+Store admin and Endpoint delegate may share the operations Squads only after
+explicit acceptance of correlated compromise risk. Upgrade authority should not
+be the routine operator.
 
-## Human decisions and addresses still required
+### Robinhood Safe
 
-1. Legal/organizational owner of each Squads and Safe.
-2. Actual signer identities and their independence.
-3. Acceptance or revision of the proposed `4-of-7`, `3-of-5`, and `2-of-3`
-   thresholds.
-4. Final Squads account addresses and Safe address.
-5. Whether Store admin and Endpoint delegate may share one Squads.
-6. Whether SanOFT owner and Endpoint delegate may share one Safe.
-7. Whether the EVM contract must add a pause-only guardian before deployment.
-8. Safe module, guard, fallback-handler, and transaction-service policy.
-9. Timelock/delay requirements for upgrades, ownership, peer, DVN, library,
-   Executor, confirmation, enforced-option, and rate-limit changes.
-10. Emergency response and unpause approval service-level objectives.
-11. Signer key custody, backup, replacement, and incident procedures.
-12. Independent reviewers for each deployment/configuration proposal.
+`SanOFT` is non-upgradeable. Deploy with the Safe directly as constructor
+delegate/owner where practical. Use 3-of-5 for ownership, Endpoint delegate,
+peer/DVN/configuration, pause/unpause, and rate-limit changes. Begin with no Safe
+module, guard, or fallback handler unless independently reviewed.
 
-Until these decisions and addresses are approved and verified, every production
-authority transfer remains blocked.
+The current contract can express only owner-controlled pause **and** unpause. It
+cannot grant a pause-only guardian with no unpause/configuration power. A
+pause-only 2-of-3 guardian could improve emergency latency while limiting its
+power, but requires a separately approved contract change and audit. This phase
+does not make that change; do not lower the owner threshold as a shortcut.
+
+## Required ceremony and unresolved decisions
+
+Before Phase 5B, humans must approve signer organizations, actual Squads/Safe
+addresses, thresholds, independence evidence, recovery/offboarding, proposal
+delays, emergency/unpause SLAs, Safe module policy, monitoring, independent
+reviewers, and whether roles share a multisig. Run key-loss,
+compromised-signer, malicious-proposal, pause, rejected-unpause, and replacement
+drills off production. Every future action must record decoded calls,
+simulations, signers, before/after state, and an independent read-back.

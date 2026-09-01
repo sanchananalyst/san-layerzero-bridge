@@ -14,9 +14,21 @@
 
 <h1 align="center">SAN LayerZero V2 Bridge</h1>
 
-<p align="center">Phase 1 source and tests for bridging canonical SAN from Solana to a standard LayerZero OFT representation on Robinhood Chain.</p>
+<p align="center">Pre-mainnet production-readiness source and tests for bridging canonical SAN from Solana to a standard LayerZero OFT representation on Robinhood Chain.</p>
 
-> **SAN Phase 1 safety notice:** This repository is being adapted for the existing canonical SAN token on Solana and a standard `SanOFT` on Robinhood Chain. Do not run any deploy, wire, send, authority, or endpoint recovery command in this README during Phase 1. Do not add private keys or mnemonics. The binding project architecture and unresolved production configuration are documented in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md); repository-wide safety rules are in [`AGENTS.md`](./AGENTS.md). The remaining walkthrough below is upstream starter reference material, not an approved SAN runbook.
+> **Production safety notice:** This repository is in Phase 5A.1, before mainnet execution. No deployment, creation, wiring, authority, recovery, rate-limit, send, mint, burn, approval, liquidity, or other blockchain transaction is authorized by this repository or README. Transaction-producing mainnet task paths are structurally disabled in this revision. Use only the reviewed future runbooks after a separately approved Phase 5B change. Never add private keys or mnemonics.
+
+SAN bridging is cross-chain infrastructure and carries smart-contract, protocol,
+governance, validator/DVN, sequencer, and operational risk. Canonical Solana SAN
+at `GQz5ThKHNcuAvMKA8rCPSdoFUoApk9Fi8qB9m3Gqpump` remains the underlying asset.
+Any Robinhood SAN representation must remain backed by SAN held in the canonical
+Solana Adapter escrow, accounting for explicitly analyzed in-flight messages.
+Verified production application addresses will be published only after an
+authorized deployment and independent verification. See
+[`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md),
+[`docs/PRODUCTION_SECURITY_REVIEW.md`](./docs/PRODUCTION_SECURITY_REVIEW.md), and
+[`SECURITY.md`](./SECURITY.md). The walkthrough below is retained upstream
+reference material, not an approved production procedure.
 
 ## Table of Contents
 

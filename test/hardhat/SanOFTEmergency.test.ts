@@ -9,7 +9,7 @@ describe('SanOFT emergency controls', function () {
     const solanaEid = 30168
     const robinhoodEid = 30416
     const unit = BigNumber.from(10).pow(6)
-    const canaryCapacity = BigNumber.from(100_000).mul(unit)
+    const canaryCapacity = BigNumber.from(500_000).mul(unit)
     const day = 86_400
     const receiveOptions = Options.newOptions().addExecutorLzReceiveOption(200000, 0).toHex().toString()
 

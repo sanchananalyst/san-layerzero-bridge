@@ -13,8 +13,8 @@ import { OFT } from "@layerzerolabs/oft-evm/contracts/OFT.sol";
 ///      standard OFT implementation. In particular, OFT burns on send and only
 ///      mints from the authenticated LayerZero receive path.
 contract SanOFT is OFT, Pausable {
-    uint256 public constant CANARY_CAPACITY = 100_000 * 10 ** 6;
-    uint256 public constant CANARY_REFILL_AMOUNT = 100_000 * 10 ** 6;
+    uint256 public constant CANARY_CAPACITY = 500_000 * 10 ** 6;
+    uint256 public constant CANARY_REFILL_AMOUNT = 500_000 * 10 ** 6;
     uint64 public constant CANARY_REFILL_DURATION = 1 days;
 
     struct TokenBucket {

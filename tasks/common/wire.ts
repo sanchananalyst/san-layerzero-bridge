@@ -1,4 +1,4 @@
-import { PublicKey } from '@solana/web3.js'
+import { Keypair, PublicKey } from '@solana/web3.js'
 import { subtask, task } from 'hardhat/config'
 
 import { firstFactory } from '@layerzerolabs/devtools'
@@ -15,7 +15,7 @@ import {
     TASK_LZ_OWNABLE_TRANSFER_OWNERSHIP,
 } from '@layerzerolabs/ua-devtools-evm-hardhat'
 
-import { createAptosSignerFactory } from '../aptos'
+import { requireFutureMainnetExecution } from '../../scripts/productionToolingPolicy'
 import { deriveConnection, getSolanaDeployment, useWeb3Js } from '../solana'
 import { findSolanaEndpointIdInGraph, validateSigningAuthority } from '../solana/utils'
 
@@ -54,6 +54,7 @@ task(TASK_LZ_OAPP_WIRE)
     .addParam('internalConfigurator', 'FOR INTERNAL USE ONLY', undefined, devtoolsTypes.fn, true)
     .addParam('isSolanaInitConfig', 'FOR INTERNAL USE ONLY', undefined, devtoolsTypes.boolean, true)
     .setAction(async (args: Args, hre, runSuper) => {
+        if (!args.dryRun) requireFutureMainnetExecution(process.env.SAN_MAINNET_EXECUTION_PHASE)
         const logger = createLogger(args.logLevel)
 
         //
@@ -71,9 +72,10 @@ task(TASK_LZ_OAPP_WIRE)
         //
         //
 
-        // construct the user's keypair via the SOLANA_PRIVATE_KEY env var
-        const keypair = (await useWeb3Js()).web3JsKeypair // note: this can be replaced with getSolanaKeypair() if we are okay to export that
-        const userAccount = keypair.publicKey
+        // Preview mode must never import an operator key. Its ephemeral key is
+        // used only to satisfy local SDK types and can never authorize a write.
+        const keypair = args.dryRun ? Keypair.generate() : (await useWeb3Js()).web3JsKeypair
+        const userAccount = args.dryRun && args.multisigKey ? args.multisigKey : keypair.publicKey
 
         const solanaEid = await findSolanaEndpointIdInGraph(hre, args.oappConfig)
         const solanaDeployment = getSolanaDeployment(solanaEid)
@@ -116,7 +118,6 @@ task(TASK_LZ_OAPP_WIRE)
 
         // We'll also need a signer factory
         const solanaSignerFactory = createSolanaSignerFactory(keypair, connectionFactory, args.multisigKey)
-        const aptosSignerFactory = createAptosSignerFactory()
 
         //
         //
@@ -218,7 +219,7 @@ task(TASK_LZ_OAPP_WIRE)
         subtask(SUBTASK_LZ_SIGN_AND_SEND, 'Sign OFT transactions', (args: SignAndSendTaskArgs, _hre, runSuper) =>
             runSuper({
                 ...args,
-                createSigner: firstFactory(aptosSignerFactory, solanaSignerFactory, args.createSigner),
+                createSigner: firstFactory(solanaSignerFactory, args.createSigner),
             })
         )
 

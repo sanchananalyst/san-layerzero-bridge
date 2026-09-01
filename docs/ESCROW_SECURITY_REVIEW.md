@@ -126,7 +126,11 @@ All three authorities must be controlled by reviewed multisig governance, monito
 - inbound TVL/escrow decrease; and
 - an arithmetic model covering outbound, inbound, and fee withdrawal.
 
-These tests protect the exact source properties used in the proof, but they are **not** runtime Solana integration tests. The starter currently has no `test/anchor` suite despite `Anchor.toml` pointing to it. Runtime tests for unauthorized withdrawal, wrong peer, malformed/replayed receive, fee surplus, and full escrow/TVL state transitions remain a pre-launch requirement in a funded local-validator/test environment.
+These guards are complemented by `test/anchor/oftAdapter.runtime.test.ts`. Its
+eight local-validator tests passed in Phase 5A.1 and exercise initialization,
+atomic escrow/TVL transitions, unauthorized debit/withdrawal, surplus-only
+withdrawal, wrong peer/Endpoint/malformed messages, pause behavior, and both
+rate-limit buckets. Artifact equivalence and independent review remain required.
 
 ## Findings
 
@@ -142,8 +146,11 @@ None found. In particular, OFT Store admin cannot directly withdraw collateraliz
 
 ### MEDIUM
 
-1. **Runtime Solana escrow tests are absent.** Static regression/model tests do not exercise Anchor CPI, token accounts, Endpoint rollback, or upgradeable-loader behavior. Mitigation: complete local-validator integration tests before launch.
-2. **EVM standard OFT has no native bridge pause/rate limit.** A forged-mint incident has no built-in velocity bound on Robinhood. Mitigation requires a separately reviewed extension or an explicit acceptance of this risk.
+1. **Governance can reconfigure security.** Multisig separation, monitoring,
+   transaction-by-transaction read-back, and an independent audit remain
+   mandatory.
+2. **Runtime tests do not prove deployed bytecode equivalence.** Close the
+   digest-pinned reproducible-build gate before deployment.
 
 ### LOW
 

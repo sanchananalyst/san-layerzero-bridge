@@ -2,6 +2,7 @@ import {
     PRODUCTION_RATE_LIMIT_PROFILES,
     ProductionRateLimitPlan,
     validateProductionRateLimitPlan,
+    validateSolanaProductionRateLimitTask,
 } from '../../scripts/productionRateLimitPolicy'
 
 const plan = (): ProductionRateLimitPlan => {
@@ -89,10 +90,45 @@ describe('production rate-limit policy', () => {
 })
 
 describe('Solana rate-limit task regression guards', () => {
+    const productionTask = () => ({
+        localEid: 30168,
+        peerEid: 30416,
+        mint: 'GQz5ThKHNcuAvMKA8rCPSdoFUoApk9Fi8qB9m3Gqpump',
+        programId: '9myHzfqsbJfGbYxpCvVCYqLaB4Co1RCo2a8T4QSkTvcD',
+        oftStore: '8eGbY1MUKMSRoLTSPxen83hPWfT3zTuCVgj2UbS1kKsL',
+        approvedOftStore: '8eGbY1MUKMSRoLTSPxen83hPWfT3zTuCVgj2UbS1kKsL',
+        capacity: PRODUCTION_RATE_LIMIT_PROFILES.canary.capacity,
+        refillPerSecond: PRODUCTION_RATE_LIMIT_PROFILES.canary.refillPerSecond,
+    })
+
+    it('accepts the exact production EID and selected profile', () => {
+        expect(validateSolanaProductionRateLimitTask(productionTask())).toBe('canary')
+    })
+
+    it('rejects wrong local/peer EIDs, test identities, and unapproved values', () => {
+        for (const mutate of [
+            (value: ReturnType<typeof productionTask>) => (value.localEid = 40168),
+            (value: ReturnType<typeof productionTask>) => (value.peerEid = 40451),
+            (value: ReturnType<typeof productionTask>) => (value.mint = 'Hec7jHowvQnD1ZHYUt98mWfqh5VoBXdjciC2DQPHcja'),
+            (value: ReturnType<typeof productionTask>) =>
+                (value.programId = 'EgA4Cc59PAdJvh6G13H3mM3iYprAvwTcU5J8H8jnjoN8'),
+            (value: ReturnType<typeof productionTask>) =>
+                (value.oftStore = '49DdSvei9Yo2ymJYDYgNTo8JqGha6HNynKxSXxqzggSv'),
+            (value: ReturnType<typeof productionTask>) =>
+                (value.approvedOftStore = '49DdSvei9Yo2ymJYDYgNTo8JqGha6HNynKxSXxqzggSv'),
+            (value: ReturnType<typeof productionTask>) => (value.refillPerSecond -= 1n),
+        ]) {
+            const value = productionTask()
+            mutate(value)
+            expect(() => validateSolanaProductionRateLimitTask(value)).toThrow()
+        }
+    })
+
     it('uses the caller-supplied destination EID and rethrows send failures', () => {
         const source = require('fs').readFileSync('tasks/solana/setOutboundRateLimit.ts', 'utf8') as string
         expect(source).toContain('sdk.setOutboundRateLimit(taskArgs.dstEid, solanaRateLimits)')
         expect(source).not.toContain('sdk.setOutboundRateLimit(EndpointId.SEPOLIA_V2_TESTNET')
         expect(source).toContain('throw error')
+        expect(source).toContain("'broadcast',")
     })
 })

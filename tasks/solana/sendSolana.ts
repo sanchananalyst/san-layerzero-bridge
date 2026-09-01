@@ -98,20 +98,19 @@ export async function sendSolana({
     // Check whether there are extra options or enforced options. If not, warn the user.
     // Read on Message Options: https://docs.layerzero.network/v2/concepts/message-options
     if (!extraOptions) {
+        let missingOptions = false
         try {
             const enforcedOptionsMap = await oft.getEnforcedOptions(umi.rpc, storePda, dstEid, programId)
             const enforcedOptionsBuffer = composeMsg ? enforcedOptionsMap.sendAndCall : enforcedOptionsMap.send
-
-            if (isEmptyOptionsSolana(enforcedOptionsBuffer)) {
-                const proceed = await promptToContinue(
-                    'No extra options were included and OFT has no set enforced options. Your quote / send will most likely fail. Continue?'
-                )
-                if (!proceed) {
-                    throw new Error('Aborted due to missing options')
-                }
-            }
+            missingOptions = isEmptyOptionsSolana(enforcedOptionsBuffer)
         } catch (error) {
             logger.debug(`Failed to check enforced options: ${error}`)
+        }
+        if (missingOptions) {
+            const proceed = await promptToContinue(
+                'No extra options were included and OFT has no set enforced options. Your quote / send will most likely fail. Continue?'
+            )
+            if (!proceed) throw new Error('Aborted due to missing options')
         }
     }
 
@@ -125,11 +124,11 @@ export async function sendSolana({
     logger.info('Quoting the native gas cost for the send transaction...')
     const sendParam = {
         dstEid,
-        to: Buffer.from(addressToBytes32(to)),
+        to: Uint8Array.from(addressToBytes32(to)),
         amountLd: amountUnits,
         minAmountLd: minAmount ? parseDecimalToUnits(minAmount, decimals) : amountUnits,
-        options: extraOptions ? Buffer.from(extraOptions.replace(/^0x/, ''), 'hex') : undefined,
-        composeMsg: composeMsg ? Buffer.from(composeMsg.replace(/^0x/, ''), 'hex') : undefined,
+        options: extraOptions ? Uint8Array.from(Buffer.from(extraOptions.replace(/^0x/, ''), 'hex')) : undefined,
+        composeMsg: composeMsg ? Uint8Array.from(Buffer.from(composeMsg.replace(/^0x/, ''), 'hex')) : undefined,
     }
     const { nativeFee } = await oft.quote(
         umi.rpc,

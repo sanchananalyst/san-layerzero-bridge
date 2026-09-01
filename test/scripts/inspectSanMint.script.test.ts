@@ -1,12 +1,14 @@
 import {
     CANONICAL_SAN_MINT,
     LEGACY_SPL_TOKEN_PROGRAM,
+    PRODUCTION_SOLANA_OFT_PROGRAM_ID,
     SOLANA_MAINNET_GENESIS_HASH,
     TOKEN_2022_PROGRAM,
     formatRawTokenAmount,
     requireCanonicalSanMint,
     requireSolanaMainnet,
     requireSupportedTokenProgram,
+    validateCanonicalSanMintAccount,
     validateSanAdapterConfig,
 } from '../../scripts/sanMintConfig'
 
@@ -50,6 +52,7 @@ describe('SAN mint inspection safety', () => {
                 mint: CANONICAL_SAN_MINT,
                 configuredMint: CANONICAL_SAN_MINT,
                 tokenProgram: LEGACY_SPL_TOKEN_PROGRAM,
+                programId: PRODUCTION_SOLANA_OFT_PROGRAM_ID,
             })
         ).toBe('SPL Token')
     })
@@ -61,8 +64,45 @@ describe('SAN mint inspection safety', () => {
                 mint: CANONICAL_SAN_MINT,
                 configuredMint: CANONICAL_SAN_MINT,
                 tokenProgram: LEGACY_SPL_TOKEN_PROGRAM,
+                programId: PRODUCTION_SOLANA_OFT_PROGRAM_ID,
             })
         ).toThrow('restricted to Solana mainnet EID 30168')
+    })
+
+    it('refuses the wrong production OFT program or Token-2022 for canonical SAN', () => {
+        expect(() =>
+            validateSanAdapterConfig({
+                eid: 30168,
+                mint: CANONICAL_SAN_MINT,
+                configuredMint: CANONICAL_SAN_MINT,
+                tokenProgram: LEGACY_SPL_TOKEN_PROGRAM,
+                programId: 'EgA4Cc59PAdJvh6G13H3mM3iYprAvwTcU5J8H8jnjoN8',
+            })
+        ).toThrow('requires production OFT program')
+        expect(() =>
+            validateSanAdapterConfig({
+                eid: 30168,
+                mint: CANONICAL_SAN_MINT,
+                configuredMint: CANONICAL_SAN_MINT,
+                tokenProgram: TOKEN_2022_PROGRAM,
+                programId: PRODUCTION_SOLANA_OFT_PROGRAM_ID,
+            })
+        ).toThrow('must use the legacy SPL Token program')
+    })
+
+    it('requires six decimals and revoked canonical mint authorities', () => {
+        expect(() =>
+            validateCanonicalSanMintAccount({ decimals: 6, mintAuthority: null, freezeAuthority: null })
+        ).not.toThrow()
+        expect(() =>
+            validateCanonicalSanMintAccount({ decimals: 9, mintAuthority: null, freezeAuthority: null })
+        ).toThrow('decimals are not 6')
+        expect(() =>
+            validateCanonicalSanMintAccount({ decimals: 6, mintAuthority: 'authority', freezeAuthority: null })
+        ).toThrow('mint authority is not revoked')
+        expect(() =>
+            validateCanonicalSanMintAccount({ decimals: 6, mintAuthority: null, freezeAuthority: 'authority' })
+        ).toThrow('freeze authority is not revoked')
     })
 
     it('accepts only the Solana mainnet genesis hash', () => {

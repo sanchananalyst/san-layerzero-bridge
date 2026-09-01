@@ -13,9 +13,7 @@ process.env.TS_NODE_COMPILER_OPTIONS = JSON.stringify({
 import 'dotenv/config'
 
 import 'hardhat-deploy'
-import '@nomicfoundation/hardhat-ethers'
 import '@nomiclabs/hardhat-waffle'
-import 'hardhat-deploy-ethers'
 import 'hardhat-contract-sizer'
 import '@nomiclabs/hardhat-ethers'
 import '@layerzerolabs/toolbox-hardhat'
@@ -36,9 +34,13 @@ const config: HardhatUserConfig = {
             {
                 version: '0.8.22',
                 settings: {
+                    evmVersion: 'paris',
                     optimizer: {
                         enabled: true,
                         runs: 200,
+                    },
+                    metadata: {
+                        useLiteralContent: true,
                     },
                 },
             },

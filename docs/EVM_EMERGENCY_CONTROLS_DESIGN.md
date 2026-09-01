@@ -64,8 +64,8 @@ Rate limiting uses actual local-denomination amounts. SAN local and shared decim
 Each direction has an independent on-chain token bucket. Initial values are:
 
 ```text
-capacity      = 100,000 * 10^6 raw units  // deterministic test fixture only
-refill amount = 100,000 * 10^6 raw units  // not a production recommendation
+capacity      = 500,000 * 10^6 raw units  // production canary profile
+refill amount = 500,000 * 10^6 raw units  // over 86,400 seconds
 refill window = 24 hours
 ```
 

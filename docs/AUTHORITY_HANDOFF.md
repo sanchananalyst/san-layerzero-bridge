@@ -88,6 +88,22 @@ All addresses, bytecode, hashes, multisig thresholds, and proposal calldata must
 10. From both multisigs, execute harmless/read-only governance drills and prepare—but do not yet exercise—the pause/rollback procedures.
 11. Independently verify all five deployer-removal conditions, archive the signed evidence, and require a human go/no-go before unpausing or accepting deposits.
 
+## Phase 5A.1 local simulation result
+
+`buildAuthorityHandoffSimulation` produced the ordered, zero-transaction plan:
+
+1. set and read back the Solana Endpoint delegate;
+2. set and read back OFT Store admin, then prove bootstrap rejection;
+3. set and read back program upgrade authority from loader program-data;
+4. set and read back Robinhood Endpoint delegate; and
+5. transfer and read back Robinhood ownership, then prove bootstrap rejection.
+
+`verifyAuthorityHandoffReadback` accepts byte-equivalent Solana public keys and
+checksummed EVM addresses, rejects every mismatch, and rejects any unexpected
+remaining deployer role. Policy tests passed without creating a proposal,
+signature, or transaction. The future ceremony must stop immediately if any
+read-back differs or any deployer authority remains.
+
 ## Read-only verification commands
 
 These commands are templates; replace placeholders and use independently verified RPCs. They perform reads only.

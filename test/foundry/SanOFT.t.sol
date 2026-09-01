@@ -17,7 +17,7 @@ contract SanOFTTest is TestHelperOz5 {
     uint8 private constant SAN_DECIMALS = 6;
     uint256 private constant CURRENT_SAN_SUPPLY_RAW = 999998816193310;
     uint256 private constant UNIT = 1e6;
-    uint256 private constant CANARY_CAPACITY = 100_000 * UNIT;
+    uint256 private constant CANARY_CAPACITY = 500_000 * UNIT;
     uint64 private constant DAY = 1 days;
     OFTTestPeer private solanaPeer;
     SanOFT private sanOFT;

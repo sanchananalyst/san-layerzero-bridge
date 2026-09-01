@@ -3,6 +3,7 @@ import bs58 from 'bs58'
 export const CANONICAL_SAN_MINT = 'GQz5ThKHNcuAvMKA8rCPSdoFUoApk9Fi8qB9m3Gqpump'
 export const LEGACY_SPL_TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
 export const TOKEN_2022_PROGRAM = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'
+export const PRODUCTION_SOLANA_OFT_PROGRAM_ID = '9myHzfqsbJfGbYxpCvVCYqLaB4Co1RCo2a8T4QSkTvcD'
 export const SOLANA_MAINNET_GENESIS_HASH = '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d'
 
 export type SupportedTokenProgramKind = 'SPL Token' | 'Token-2022'
@@ -12,6 +13,13 @@ export type SanAdapterConfig = {
     mint: string
     configuredMint: string | undefined
     tokenProgram: string
+    programId: string
+}
+
+export type SanMintAccountObservation = {
+    decimals: number
+    mintAuthority: string | null
+    freezeAuthority: string | null
 }
 
 function isSolanaPublicKey(value: string): boolean {
@@ -49,8 +57,20 @@ export function validateSanAdapterConfig(config: SanAdapterConfig): SupportedTok
     const configuredMint = requireCanonicalSanMint(config.configuredMint)
     const commandMint = requireCanonicalSanMint(config.mint)
     if (configuredMint !== commandMint) throw new Error('Adapter mint does not match SAN_SOLANA_MINT')
+    if (config.programId !== PRODUCTION_SOLANA_OFT_PROGRAM_ID) {
+        throw new Error(`SAN adapter creation requires production OFT program ${PRODUCTION_SOLANA_OFT_PROGRAM_ID}`)
+    }
+    if (config.tokenProgram !== LEGACY_SPL_TOKEN_PROGRAM) {
+        throw new Error('Canonical SAN must use the legacy SPL Token program')
+    }
 
     return requireSupportedTokenProgram(config.tokenProgram)
+}
+
+export function validateCanonicalSanMintAccount(observation: SanMintAccountObservation): void {
+    if (observation.decimals !== 6) throw new Error('Canonical SAN mint decimals are not 6')
+    if (observation.mintAuthority !== null) throw new Error('Canonical SAN mint authority is not revoked')
+    if (observation.freezeAuthority !== null) throw new Error('Canonical SAN freeze authority is not revoked')
 }
 
 export function formatRawTokenAmount(rawAmount: bigint, decimals: number): string {

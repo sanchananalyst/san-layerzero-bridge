@@ -14,6 +14,7 @@ import {
     Instruction,
     KeypairSigner,
     PublicKey,
+    Signer,
     TransactionBuilder,
     Umi,
     createNoopSigner,
@@ -35,6 +36,7 @@ import { promptToContinue } from '@layerzerolabs/io-devtools'
 import { EndpointId, endpointIdToNetwork } from '@layerzerolabs/lz-definitions'
 import { OftPDA } from '@layerzerolabs/oft-v2-solana-sdk'
 
+import { requireFutureMainnetExecution } from '../../scripts/productionToolingPolicy'
 import { DebugLogger, KnownWarnings, createSolanaConnectionFactory } from '../common/utils'
 
 export const DEFAULT_LOOKUP_TABLE_ADDRESS: Partial<Record<EndpointId, PublicKey>> = {
@@ -48,13 +50,41 @@ type DeriveConnectionParams =
           readOnly?: boolean
           noopSigner?: PublicKey
       }
+
+type DerivedConnection = {
+    connection: Connection
+    umi: Umi
+    umiWalletKeyPair: ReturnType<Umi['eddsa']['createKeypairFromSecretKey']>
+    umiWalletSigner: KeypairSigner
+}
+
+type DerivedNoopConnection = Omit<DerivedConnection, 'umiWalletSigner'> & {
+    umiWalletSigner: Signer
+}
+
+export function deriveConnection(
+    eid: EndpointId,
+    params: { readOnly?: boolean; noopSigner: PublicKey }
+): Promise<DerivedNoopConnection>
+export function deriveConnection(
+    eid: EndpointId,
+    params?: boolean | { readOnly?: boolean; noopSigner?: undefined }
+): Promise<DerivedConnection>
 /**
  * Derive common connection and UMI objects for a given endpoint ID.
  * @param eid {EndpointId}
  */
-export const deriveConnection = async (eid: EndpointId, params: DeriveConnectionParams = false) => {
+export async function deriveConnection(
+    eid: EndpointId,
+    params: DeriveConnectionParams = false
+): Promise<DerivedConnection | DerivedNoopConnection> {
     // line below is for backwards compatibility (second param was initially only readOnly, updated to an object)
-    const { readOnly = false, noopSigner } = typeof params === 'object' ? params : { readOnly: params }
+    const { readOnly: requestedReadOnly = false, noopSigner } =
+        typeof params === 'object' ? params : { readOnly: params }
+    const readOnly = requestedReadOnly || noopSigner != null
+    if (eid === EndpointId.SOLANA_V2_MAINNET && !readOnly) {
+        requireFutureMainnetExecution(process.env.SAN_MAINNET_EXECUTION_PHASE)
+    }
     const keypair = await getSolanaKeypair(readOnly)
     const connectionFactory = createSolanaConnectionFactory()
     const connection = await connectionFactory(eid)

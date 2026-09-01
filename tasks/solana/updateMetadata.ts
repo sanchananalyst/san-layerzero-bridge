@@ -39,9 +39,9 @@ task('lz:oft:solana:update-metadata', 'Updates the metaplex metadata of the SPL 
     .addOptionalParam('vaultPda', 'The Vault PDA public key', undefined, devtoolsTypes.string)
     .setAction(
         async ({ eid, name, mint: mintStr, sellerFeeBasisPoints, symbol, uri, vaultPda }: UpdateMetadataTaskArgs) => {
-            const { umi, umiWalletSigner } = await deriveConnection(eid, {
-                noopSigner: vaultPda ? publicKey(vaultPda) : undefined,
-            })
+            const { umi, umiWalletSigner } = vaultPda
+                ? await deriveConnection(eid, { noopSigner: publicKey(vaultPda) })
+                : await deriveConnection(eid)
 
             const mint = publicKey(mintStr)
 

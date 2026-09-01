@@ -2,74 +2,35 @@
 
 ## Status
 
-The repository is not ready to become public. Phase 5A did not rewrite history,
-publish the repository, reveal secret values, or access local ignored key
-contents.
+The rewritten local repository is materially safer but **must not be made
+public in Phase 5A.1**. No remote is configured, nothing was pushed, and prior
+publication cannot be established from local metadata alone.
 
-## Scan coverage
+Completed controls:
 
-- All 12 commits reachable from the three local branches were enumerated.
-- 203 unique Git blob/path pairs were inspected by a value-redacting local scan.
-- The scan checked Solana 64-byte JSON keypairs, PEM private keys, private-key
-  assignments, mnemonic/seed assignments, Alchemy credential URLs, GitHub
-  tokens, and AWS access keys.
-- Dedicated scanners `gitleaks`, `trufflehog`, `detect-secrets`, `git-secrets`,
-  and `ggshield` are not installed. This is a tooling gap; the custom scan is not
-  a substitute for independent scanner coverage.
-- No Git remote or tags are currently configured.
-- The current index contains no tracked keypair/wallet/PEM/mnemonic file.
-- `.env` and `target/` are ignored. Their private contents were not displayed or
-  copied and must never be added to a public archive.
+- a verified local-only pre-scrub bundle exists and is excluded from public
+  distribution;
+- historical Solana keypair material was removed and the historical mnemonic
+  replaced across all refs;
+- reflogs/unreachable objects were pruned and `git fsck` is clean;
+- Gitleaks 8.30.1 full-history scan has only two documented public-address false
+  positives;
+- current tracked files contain no keypair/private-key material;
+- `.env`, generated keypairs, `target/`, and operator material are ignored; and
+- canonical identity, source, architecture, tests, security/rate/governance
+  models, future runbooks, vulnerability policy, and auditor scope are present.
 
-## Findings requiring history cleanup
+Remaining publication gates:
 
-### Historical Solana keypair JSON
+1. replace the responsible-disclosure contact placeholder in `SECURITY.md`;
+2. independently confirm both historical credentials are retired and check any
+   prior mirrors, archives, CI artifacts, forks, or clones;
+3. add repository-host secret scanning and protected-branch rules;
+4. obtain legal/license and LayerZero dependency/source-obligation review;
+5. close Docker reproducibility and independent security audit blockers;
+6. review the exact public archive to exclude the sensitive local bundle,
+   `.env`, ignored keys, logs, caches, and deployment workspaces; and
+7. separately authorize creation/push of a public remote.
 
-- Path: `junk-id.json`
-- Reachable commit: `14611ec983c307bcc651afaf3e554845ad616b56`
-- Git blob: `8ccf579ceb1de46f3fbd6292d27989480bc9f3b9`
-- Blob size: 306 bytes
-- Blob SHA-256: `9fa92b676190cde219da1ec7b9cf30998860a21534a85bb02e3d893c45085513`
-- Classification: structurally valid 64-byte Solana keypair JSON
-
-The file was deleted by `280c165…`, but deletion does not remove the blob from
-history. Treat the key as compromised. Confirm it has no present authority or
-funds, retire it permanently, and remove the blob from every published ref.
-
-### Historical 12-word mnemonic assignment
-
-- Path: `README.md`, line 134 in the initial commit
-- Reachable commit: `14611ec983c307bcc651afaf3e554845ad616b56`
-- Git blob: `ee250f32c12c33b2f58075ecccb213905ab47977`
-- Blob size: 22,467 bytes
-- Blob SHA-256: `1936b86fd4f7ade58d3e2500ab36bf99c3fc37d4f9a2d9ed8ae92c3f0abf8be6`
-- Classification: a non-placeholder 12-word value assigned to `MNEMONIC`
-
-The value was not printed during this audit. Treat it as compromised, determine
-every derived account without exposing it in review artifacts, retire/rotate any
-use, and replace it throughout history before publication.
-
-## Required cleanup before publication
-
-1. Confirm both historical credentials are test-only and have no funds,
-   authorities, deployment roles, API access, or reused derivations. Rotate or
-   retire them regardless.
-2. Create an offline backup and record all refs before rewriting.
-3. Use `git filter-repo` or an equivalent reviewed tool to remove
-   `junk-id.json` from every ref and replace the historical mnemonic with an
-   obvious placeholder. Keep replacement material outside the repository and do
-   not put the old value in shell history.
-4. Re-run at least two independent maintained scanners across the rewritten
-   working tree and full history.
-5. Verify the two identified blob IDs and all secret-pattern matches are absent
-   from every branch and tag.
-6. Review `.env.example`, CI configuration, package-manager settings, deployment
-   records, logs, and documentation for RPC/API credentials and internal URLs.
-7. Purge old CI artifacts, release archives, caches, mirrors, forks, and backups
-   intended for publication. Coordinate force-push and clone invalidation.
-8. Add automated secret scanning and protected-branch checks before creating a
-   remote.
-9. Obtain human approval of licensing, LayerZero source-license obligations,
-   security contact, disclosure policy, and public documentation.
-
-History rewriting is intentionally deferred to a separately approved task.
+Future deployment records may publish verified addresses and transaction/GUID
+evidence only after those events occur. This repository does not invent them.

@@ -2,7 +2,7 @@
 
 ## Status
 
-This is a Phase 3 design only. No peer, library, DVN, Executor, confirmation, option, pause, or rate-limit setting has been applied.
+This is an unapplied Phase 5A.1 design. No peer, library, DVN, Executor, confirmation, option, pause, or rate-limit setting has been applied.
 
 The current Robinhood defaults contain the deprecated Dead DVN and the two chains' default confirmations do not match. Production SAN must explicitly pin every pathway setting and verify the resolved state after configuration.
 
@@ -60,18 +60,21 @@ If the team is unwilling to add Horizen, choose Option A and explicitly accept t
 
 ## Proposed bidirectional pathway
 
-| Setting                     | Solana → Robinhood                                           | Robinhood → Solana                                           | Rationale                                                                                   |
-| --------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| Source send library         | Solana ULN302 program `7a4W…dXVH` / resolved message-lib PDA | SendUln302 `0xC391…2de7`                                     | Pin current official ULN302; do not inherit                                                 |
-| Destination receive library | ReceiveUln302 `0xe184…1043`                                  | Solana ULN302 program `7a4W…dXVH` / resolved message-lib PDA | Match the source send library version                                                       |
-| DVNs                        | 2-of-3 LZ Labs, Nethermind, Horizen using Solana identities  | 2-of-3 same providers using Robinhood identities             | two-provider compromise threshold with one outage tolerated                                 |
-| Confirmations               | `32` in Solana send and Robinhood receive                    | `32` in Robinhood send and Solana receive                    | Solana official floor is 32; 32 is also above LayerZero's 15–30 typical optimistic-L2 range |
-| Executor                    | `AwrbHe…Y7xK` in the Solana source send config               | `0x4208…0A0b` in Robinhood source send config                | current official LayerZero Executor workers; pin explicitly                                 |
-| Max message size            | explicit value sufficient for the supported OFT payload      | explicit value sufficient for the supported OFT payload      | benchmark standard send and reject accidental default inheritance                           |
+| Setting                     | Solana → Robinhood                                           | Robinhood → Solana                                           | Rationale                                                            |
+| --------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | -------------------------------------------------------------------- |
+| Source send library         | Solana ULN302 program `7a4W…dXVH` / resolved message-lib PDA | SendUln302 `0xC391…2de7`                                     | Pin current official ULN302; do not inherit                          |
+| Destination receive library | ReceiveUln302 `0xe184…1043`                                  | Solana ULN302 program `7a4W…dXVH` / resolved message-lib PDA | Match the source send library version                                |
+| DVNs                        | 2-of-3 LZ Labs, Nethermind, Horizen using Solana identities  | 2-of-3 same providers using Robinhood identities             | two-provider compromise threshold with one outage tolerated          |
+| Confirmations               | `32` in Solana send and Robinhood receive                    | **unapproved/fail-closed**                                   | Solana floor is defined; Robinhood L2 depth is not Ethereum finality |
+| Executor                    | `AwrbHe…Y7xK` in the Solana source send config               | `0x4208…0A0b` in Robinhood source send config                | current official LayerZero Executor workers; pin explicitly          |
+| Max message size            | explicit value sufficient for the supported OFT payload      | explicit value sufficient for the supported OFT payload      | benchmark standard send and reject accidental default inheritance    |
 
 In ULN, confirmations are **source-chain block confirmations** a DVN waits before verification. On Solana, `32` means 32 slots/blocks after the source event and follows LayerZero's stated minimum. On Robinhood, `32` means 32 Robinhood/Nitro L2 blocks after the source event. It is not the Arbitrum Ethereum fraud-proof challenge period and must not be presented as Ethereum L1 finality.
 
-Retain `32/32` as the conservative initial LayerZero confirmation setting: it is above LayerZero's typical `15–30` optimistic-L2 range and avoids asymmetric send/receive requirements. It does not by itself prove L1 economic finality. Human launch review must confirm Robinhood's actual reorg/finality and sequencer behavior and the DVNs' treatment of Nitro state; raise the value if that analysis requires it.
+Retain `32` only for Solana-source messages. Robinhood-source confirmations are
+unapproved and the checker fails closed. `128` is a provisional soft-depth
+candidate if governance accepts sequencer/DVN risk, but it is not L1 economic
+finality. See `docs/ROBINHOOD_FINALITY_POLICY.md`.
 
 Executor concentration remains: LayerZero has one Executor per pathway. Delivery is permissionless after verification, but the team must test manual delivery/retry and monitor Executor health before launch.
 
@@ -106,7 +109,9 @@ Use these native controls rather than modifying `programs/oft`. The launch polic
 
 ### Robinhood SanOFT
 
-LayerZero's standard EVM `OFT` inherited by `SanOFT` has enforced options and ownership/peer controls, but no native transfer cap, token-bucket bridge rate limit, or global pause. `SanOFT` remains intentionally minimal in Phase 3.
+Production `SanOFT` retains standard OFT authentication/accounting and adds a
+bridge-only pause plus independent inbound/outbound token buckets. Ordinary
+ERC-20 transfers remain available while bridge paths are paused.
 
 ### EVM emergency-control decision
 
@@ -116,9 +121,10 @@ LayerZero's standard EVM `OFT` inherited by `SanOFT` has enforced options and ow
 | 2. Small SAN inheritance override | approximately 60–120 Solidity lines plus substantial tests | keep non-upgradeable                                                         | new pauser/rate-admin DoS and parameter risks; focused audit needed | can halt debit/credit and cap loss per window                                              | standard external OFT interface retained if hooks are overridden carefully |
 | 3. Extended/stablecoin framework  | materially larger dependency/role surface                  | commonly designed for richer role/upgrade patterns, to be decided explicitly | largest configuration and audit burden                              | strongest built-in operational feature set where supported                                 | LayerZero-compatible but less minimal and more specialized                 |
 
-**Recommendation: Option 2**, implemented only in a later explicitly authorized phase and independently audited. A custody bridge representing roughly one billion SAN should have symmetric incident containment and on-chain velocity bounds. Keep LayerZero's standard OFT authentication/accounting, override only the standard debit/credit hooks, preserve the standard external OFT ABI, use separate tightly scoped pause/rate roles, and do not add arbitrary minting. Do not use a proxy unless a separate governance and upgrade-risk review approves it.
-
-Until Option 2 is implemented and tested, the absence of an EVM pause/rate limiter is a deployment blocker, not an accepted default.
+**Implemented choice: Option 2.** The focused non-upgradeable extension preserves
+standard authentication/accounting, overrides only debit/credit/quote behavior,
+and adds no arbitrary mint. It is covered by Hardhat and Foundry tests and still
+requires independent audit.
 
 ## Proposed initial rate-limit profiles
 
@@ -128,11 +134,11 @@ Until Option 2 is implemented and tested, the absence of an EVM pause/rate limit
 
 These are risk-budget proposals, not applied settings. They cap aggregate cross-chain flow per direction; the same bucket sizes are proposed in both directions. Robinhood-to-Solana execution is additionally bounded by escrow/TVL and Robinhood circulating supply.
 
-| Profile                    | Solana → Robinhood capacity | Refill                                     | Robinhood → Solana capacity | Frontend single-transfer maximum |
-| -------------------------- | --------------------------: | ------------------------------------------ | --------------------------: | -------------------------------: |
-| Very conservative canary   |               `100,000 SAN` | `100,000 SAN / 24 h` (`1.157407 SAN/s`)    |               `100,000 SAN` |                     `10,000 SAN` |
-| Conservative public launch |             `1,000,000 SAN` | `1,000,000 SAN / 24 h` (`11.574074 SAN/s`) |             `1,000,000 SAN` |                    `100,000 SAN` |
-| Normal operations          |             `5,000,000 SAN` | `5,000,000 SAN / 24 h` (`57.870370 SAN/s`) |             `5,000,000 SAN` |                    `500,000 SAN` |
+| Profile           | Solana → Robinhood capacity | Refill                  | Robinhood → Solana capacity | Frontend single-transfer maximum |
+| ----------------- | --------------------------: | ----------------------- | --------------------------: | -------------------------------: |
+| Canary            |               `500,000 SAN` | `500,000 SAN / 24 h`    |               `500,000 SAN` |              separately approved |
+| Early public      |            `30,000,000 SAN` | `30,000,000 SAN / 24 h` |            `30,000,000 SAN` |              separately approved |
+| Normal operations |            `50,000,000 SAN` | `50,000,000 SAN / 24 h` |            `50,000,000 SAN` |              separately approved |
 
 Capacities are approximately `0.01%`, `0.1%`, and `0.5%` of the ~`999,998,816 SAN` supply. Promotions require incident-free observation, monitoring, governance approval, and matching enforced controls on both chains. Frontend limits are usability policy only and are **not security controls** unless the contracts/programs enforce them on-chain.
 
@@ -143,7 +149,8 @@ Before public bridging, independently read and compare all four custom ULN confi
 - no field is inheriting a default sentinel;
 - no Dead DVN is present;
 - all effective DVNs and thresholds match the approved matrix;
-- confirmations are `32/32` for each source direction;
+- Solana-source confirmations are `32` and Robinhood-source confirmations match
+  the explicit separately approved value;
 - address arrays are correctly sorted;
 - standard sends have the measured execution resources; and
 - a rollback/pause/manual-delivery drill has passed on an approved non-production environment.

@@ -1,11 +1,12 @@
 [profile.default]
-solc-version = '0.8.22'
+solc = '0.8.22'
+evm_version = 'paris'
 src = 'contracts'
 out = 'out'
 test = 'test/foundry'
 cache_path = 'cache/foundry'
 optimizer = true
-optimizer_runs = 20_000
+optimizer_runs = 200
 
 libs = [
     # We provide a set of useful contract utilities

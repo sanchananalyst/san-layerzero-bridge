@@ -26,10 +26,10 @@ and must never be uploaded or included in a public distribution.
 
 No secret value is reproduced here.
 
-| Classification | Path | Introducing/reachable commit | Blob | Secret category | Safely derived public identity | Known project identity/use |
-| --- | --- | --- | --- | --- | --- | --- |
-| HIGH | `junk-id.json` | `14611ec983c307bcc651afaf3e554845ad616b56` | `8ccf579ceb1de46f3fbd6292d27989480bc9f3b9` | Structurally valid 64-byte Solana keypair JSON | `JD5ype5b3NTRDddDtoqLXHcJcCoBToxs9ZnsKMkFbguD` | Not the production program ID, known Devnet deployer, tSAN program, or another recorded SAN identity. Zero Solana-mainnet balance/token accounts at audit time. The address has Devnet-only balance, token accounts, and activity, so it is a compromised retired test wallet and must never be trusted. |
-| HIGH | `README.md` | `14611ec983c307bcc651afaf3e554845ad616b56` | `ee250f32c12c33b2f58075ecccb213905ab47977` | Valid 12-word BIP-39 mnemonic assignment | standard account 0: `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266` | Standard public Hardhat test mnemonic/account. It does not derive the known Robinhood Testnet deployer in the first 100 standard EVM accounts. Zero native balance observed on Ethereum mainnet and Robinhood mainnet; Robinhood Testnet contains only dust. Not a recorded SAN deployment identity. |
+| Classification | Path           | Introducing/reachable commit               | Blob                                       | Secret category                                | Safely derived public identity                                   | Known project identity/use                                                                                                                                                                                                                                                                               |
+| -------------- | -------------- | ------------------------------------------ | ------------------------------------------ | ---------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HIGH           | `junk-id.json` | `14611ec983c307bcc651afaf3e554845ad616b56` | `8ccf579ceb1de46f3fbd6292d27989480bc9f3b9` | Structurally valid 64-byte Solana keypair JSON | `JD5ype5b3NTRDddDtoqLXHcJcCoBToxs9ZnsKMkFbguD`                   | Not the production program ID, known Devnet deployer, tSAN program, or another recorded SAN identity. Zero Solana-mainnet balance/token accounts at audit time. The address has Devnet-only balance, token accounts, and activity, so it is a compromised retired test wallet and must never be trusted. |
+| HIGH           | `README.md`    | `14611ec983c307bcc651afaf3e554845ad616b56` | `ee250f32c12c33b2f58075ecccb213905ab47977` | Valid 12-word BIP-39 mnemonic assignment       | standard account 0: `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266` | Standard public Hardhat test mnemonic/account. It does not derive the known Robinhood Testnet deployer in the first 100 standard EVM accounts. Zero native balance observed on Ethereum mainnet and Robinhood mainnet; Robinhood Testnet contains only dust. Not a recorded SAN deployment identity.     |
 
 Maintained `gitleaks` 8.30.1 scanning of `--all` reported two additional
 generic-key matches. Redacted structural inspection classified both as
@@ -88,4 +88,3 @@ exists and this is the explicitly authorized repository:
   continues to cover `.env`, `target/`, `*-keypair.json`, and generated wallets.
 - Verify the production public program ID remains consistent and
   `pnpm san:check-program-id` passes.
-

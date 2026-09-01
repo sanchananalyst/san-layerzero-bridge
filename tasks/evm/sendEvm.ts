@@ -9,6 +9,7 @@ import { createLogger, promptToContinue } from '@layerzerolabs/io-devtools'
 import { ChainType, endpointIdToChainType, endpointIdToNetwork } from '@layerzerolabs/lz-definitions'
 
 import layerzeroConfig from '../../layerzero.config'
+import { requireFutureMainnetExecution } from '../../scripts/productionToolingPolicy'
 import { SendResult } from '../common/types'
 import { DebugLogger, KnownErrors, MSG_TYPE, isEmptyOptionsEvm } from '../common/utils'
 import { getLayerZeroScanLink } from '../solana'
@@ -30,6 +31,7 @@ export async function sendEvm(
     if (endpointIdToChainType(srcEid) !== ChainType.EVM) {
         throw new Error(`non-EVM srcEid (${srcEid}) not supported here`)
     }
+    if (srcEid === 30416) requireFutureMainnetExecution(process.env.SAN_MAINNET_EXECUTION_PHASE)
     const getHreByEid = createGetHreByEid(hre)
     let srcEidHre: HardhatRuntimeEnvironment
     try {
@@ -41,13 +43,14 @@ export async function sendEvm(
         )
         throw error
     }
-    const signer = await srcEidHre.ethers.getNamedSigner('deployer')
+    const { deployer } = await srcEidHre.getNamedAccounts()
+    const signer = await srcEidHre.ethers.getSigner(deployer)
     // 1️⃣ resolve the OFT wrapper address
     let wrapperAddress: string
     if (oftAddress) {
         wrapperAddress = oftAddress
     } else {
-        const { contracts } = typeof layerzeroConfig === 'function' ? await layerzeroConfig() : layerzeroConfig
+        const { contracts } = layerzeroConfig
         const wrapper = contracts.find((c) => c.contract.eid === srcEid)
         if (!wrapper) throw new Error(`No config for EID ${srcEid}`)
         wrapperAddress = wrapper.contract.contractName
@@ -88,21 +91,20 @@ export async function sendEvm(
     // Check whether there are extra options or enforced options. If not, warn the user.
     // Read on Message Options: https://docs.layerzero.network/v2/concepts/message-options
     if (!extraOptions) {
+        let missingOptions = false
         try {
             const enforcedOptions = composeMsg
                 ? await oft.enforcedOptions(dstEid, MSG_TYPE.SEND_AND_CALL)
                 : await oft.enforcedOptions(dstEid, MSG_TYPE.SEND)
-
-            if (isEmptyOptionsEvm(enforcedOptions)) {
-                const proceed = await promptToContinue(
-                    'No extra options were included and OFT has no set enforced options. Your quote / send will most likely fail. Continue?'
-                )
-                if (!proceed) {
-                    throw new Error('Aborted due to missing options')
-                }
-            }
+            missingOptions = isEmptyOptionsEvm(enforcedOptions)
         } catch (error) {
             logger.debug(`Failed to check enforced options: ${error}`)
+        }
+        if (missingOptions) {
+            const proceed = await promptToContinue(
+                'No extra options were included and OFT has no set enforced options. Your quote / send will most likely fail. Continue?'
+            )
+            if (!proceed) throw new Error('Aborted due to missing options')
         }
     }
 

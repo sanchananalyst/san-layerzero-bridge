@@ -1,3 +1,5 @@
+import { PublicKey } from '@solana/web3.js'
+
 import {
     BridgeObservation,
     BridgePolicy,
@@ -9,6 +11,22 @@ const PEERS = { solana: '0x' + '11'.repeat(32), robinhood: '0x' + '22'.repeat(32
 const APPROVED_TEST_POLICY: BridgePolicy = {
     ...SAN_LAYERZERO_POLICY,
     robinhoodSourceConfirmations: 32n,
+}
+
+const caseVariant = (value: string): string => {
+    for (let index = 0; index < value.length; index++) {
+        const character = value[index]
+        if (!/[A-Za-z]/.test(character)) continue
+        const toggled = character === character.toLowerCase() ? character.toUpperCase() : character.toLowerCase()
+        const candidate = `${value.slice(0, index)}${toggled}${value.slice(index + 1)}`
+        try {
+            new PublicKey(candidate)
+            return candidate
+        } catch {
+            // Try the next character.
+        }
+    }
+    throw new Error('No valid case variant')
 }
 
 const fixture = (): BridgeObservation => ({
@@ -101,6 +119,10 @@ describe('future deployed LayerZero configuration policy', () => {
     it('rejects wrong libraries', () =>
         fails((value) => {
             value.solana.sendLibrary = 'wrong'
+        }))
+    it('rejects a case-only mutation of a Solana security identity', () =>
+        fails((value) => {
+            value.solana.sendLibrary = caseVariant(SAN_LAYERZERO_POLICY.solana.sendLibrary)
         }))
     it('rejects different confirmations', () =>
         fails((value) => {

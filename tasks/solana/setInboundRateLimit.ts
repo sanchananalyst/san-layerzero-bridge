@@ -14,6 +14,8 @@ import { EndpointId } from '@layerzerolabs/lz-definitions'
 import { OftPDA, oft } from '@layerzerolabs/oft-v2-solana-sdk'
 import { createOFTFactory } from '@layerzerolabs/ua-devtools-solana'
 
+import { validateSolanaProductionRateLimitTask } from '../../scripts/productionRateLimitPolicy'
+import { requireFutureMainnetExecution } from '../../scripts/productionToolingPolicy'
 import { createSolanaConnectionFactory } from '../common/utils'
 
 interface Args {
@@ -24,6 +26,7 @@ interface Args {
     oftStore: string
     capacity: bigint
     refillPerSecond: bigint
+    broadcast: boolean
 }
 
 task('lz:oft:solana:inbound-rate-limit', 'Sets the Solana inbound rate limit for the explicitly supplied source EID')
@@ -34,7 +37,31 @@ task('lz:oft:solana:inbound-rate-limit', 'Sets the Solana inbound rate limit for
     .addParam('oftStore', 'The OFTStore account')
     .addParam('capacity', 'The capacity of the rate limit', undefined, types.bigint)
     .addParam('refillPerSecond', 'The refill rate of the rate limit', undefined, types.bigint)
+    .addParam(
+        'broadcast',
+        'Submit the transaction in a separately authorized execution phase',
+        false,
+        types.boolean,
+        true
+    )
     .setAction(async (taskArgs: Args, hre) => {
+        const profile = validateSolanaProductionRateLimitTask({
+            localEid: taskArgs.eid,
+            peerEid: taskArgs.srcEid,
+            mint: taskArgs.mint,
+            programId: taskArgs.programId,
+            oftStore: taskArgs.oftStore,
+            approvedOftStore: process.env.SAN_SOLANA_OFT_STORE ?? '',
+            capacity: taskArgs.capacity,
+            refillPerSecond: taskArgs.refillPerSecond,
+        })
+        if (!taskArgs.broadcast) {
+            console.log(
+                `Solana inbound ${profile} rate-limit arguments validated; no transaction was built or submitted.`
+            )
+            return
+        }
+        requireFutureMainnetExecution(process.env.SAN_MAINNET_EXECUTION_PHASE)
         const privateKey = process.env.SOLANA_PRIVATE_KEY
         assert(!!privateKey, 'SOLANA_PRIVATE_KEY is not defined in the environment variables.')
 

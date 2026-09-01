@@ -12,9 +12,9 @@ Every item requires recorded evidence and human approval. Phase 3.6 does not aut
 - [ ] SAN OFT program ID verified as `9myHzfqsbJfGbYxpCvVCYqLaB4Co1RCo2a8T4QSkTvcD`
 - [ ] Program built with explicit `OFT_ID=9myHzfqsbJfGbYxpCvVCYqLaB4Co1RCo2a8T4QSkTvcD`
 - [ ] Program source, dependency revisions, declared ID, reproducible bytecode, and deployed bytecode verified
-- [ ] Docker-verifiable `oft.so` produced on a healthy Docker host; Phase 3.6 host failed before compilation because Docker storage became read-only
+- [ ] Docker-verifiable `oft.so` produced on a healthy Docker host; Phase 5A.1 Docker client is present but the daemon is unavailable
 - [ ] Docker ELF SHA-256, `solana-verify` executable hash, and program-ID embedding recorded and independently reproduced
-- [x] Current non-Docker ELF recorded: SHA-256 `4f45291eb36debe54675fbe5427a86ecfad09ab0f6e08118802662af84091b15`; local `solana-verify` executable hash `531b13c26c54f372a412b5b9c06a2d162c81a7a0a7488eefc32b4a0788de01af`
+- [x] Current Phase 5A.1 non-Docker ELF recorded: SHA-256 `1bb1093d63402e680d5d52fb3cb7cff44a0ada7b9e5835e35d44eca07b79a395`; local `solana-verify` executable hash `955f6b81689a285cd7fe9875d7575347d9766149698b306f3b74e00e0f4bdf45`
 - [ ] Program upgrade authority and governance policy known
 - [ ] OFT Store PDA independently derived and verified
 - [ ] Escrow address independently derived/recorded and canonical SAN mint verified
@@ -45,7 +45,7 @@ Every item requires recorded evidence and human approval. Phase 3.6 does not aut
 - [ ] All selected DVNs currently active on both chains
 - [ ] No default sentinel or Dead DVN in any resolved config
 - [ ] Two-of-three threshold semantics and sorted address encoding verified
-- [ ] `32/32` confirmation proposal reviewed against current Solana and Robinhood finality behavior
+- [ ] Solana-source `32` and a separately approved Robinhood-source confirmation/finality policy reviewed; missing Robinhood value fails closed
 - [ ] Solana send and receive libraries explicitly pinned and verified
 - [ ] Robinhood SendUln302 and ReceiveUln302 explicitly pinned and verified
 - [ ] Solana Executor worker PDA explicitly pinned and verified
@@ -58,14 +58,14 @@ Every item requires recorded evidence and human approval. Phase 3.6 does not aut
 
 ## Security and operations
 
-- [ ] Escrow invariant runtime tests passing
-- [ ] Unauthorized, wrong-peer, malformed, replayed, and over-TVL receives fail in runtime tests
+- [x] Escrow invariant runtime tests passing locally (8/8)
+- [x] Unauthorized, wrong-peer, malformed/replayed, and over-TVL receives fail in local runtime tests
 - [ ] `withdraw_fee` source and runtime behavior independently reviewed
-- [ ] Full Hardhat compile/tests passing on a pinned supported Node version (tests pass locally, but Node `23.11.0` is outside Hardhat's supported range)
-- [ ] Full Foundry build/tests passing on the pinned toolchain
-- [ ] Full Anchor build/tests passing with actual local-validator integration coverage
-- [ ] TypeScript, ESLint, Prettier, and Solhint checks passing
-- [ ] No `*-keypair.json`, mnemonic, private key, or production secret tracked or staged
+- [x] Full Hardhat compile/tests passing on pinned Node `22.23.2` (21/21)
+- [x] Full Foundry build/tests passing on the pinned toolchain (16/16)
+- [x] Full Anchor build/tests passing with local-validator integration coverage (8/8)
+- [x] TypeScript, ESLint, Prettier, and Solhint checks passing (19 non-blocking lint warnings, zero errors)
+- [x] No `*-keypair.json`, mnemonic, private key, or production secret tracked or staged
 - [x] Tracked starter `junk-id.json` removed; local runtime wallet is ignored and test-only
 - [ ] No deployer retains OFT Store admin
 - [ ] No deployer retains Solana Endpoint delegate
@@ -77,7 +77,7 @@ Every item requires recorded evidence and human approval. Phase 3.6 does not aut
 - [ ] Tiny mainnet canary amount and loss limit explicitly approved
 - [ ] Rollback, pause, retry, incident communications, and emergency governance procedure documented and rehearsed
 - [ ] Independent smart-contract/Solana/security review complete
-- [ ] Human Phase 4 go/no-go approval recorded
+- [ ] Human Phase 5B go/no-go approval recorded
 
 ## Testnet-only gate
 

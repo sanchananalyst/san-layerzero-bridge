@@ -11,7 +11,12 @@ import { promptToContinue } from '@layerzerolabs/io-devtools'
 import { EndpointId } from '@layerzerolabs/lz-definitions'
 import { OFT_DECIMALS, oft } from '@layerzerolabs/oft-v2-solana-sdk'
 
-import { validateSanAdapterConfig } from '../../scripts/sanMintConfig'
+import {
+    requireSolanaMainnet,
+    validateCanonicalSanMintAccount,
+    validateSanAdapterConfig,
+} from '../../scripts/sanMintConfig'
+import { createSolanaConnectionFactory } from '../common/utils'
 
 import {
     TransactionType,
@@ -44,6 +49,7 @@ interface CreateOFTAdapterTaskArgs {
     tokenProgram: string
 
     computeUnitPriceScaleFactor: number
+    broadcast: boolean
 }
 
 // Define a Hardhat task for creating OFTAdapter on Solana
@@ -53,6 +59,13 @@ task('lz:oft-adapter:solana:create', 'Creates new OFT Adapter (OFT Store PDA)')
     .addParam('eid', 'Solana mainnet (30168) or testnet (40168)', undefined, devtoolsTypes.eid)
     .addParam('tokenProgram', 'The Token Program public key', TOKEN_PROGRAM_ID.toBase58(), devtoolsTypes.string, true)
     .addParam('computeUnitPriceScaleFactor', 'The compute unit price scale factor', 4, devtoolsTypes.float, true)
+    .addParam(
+        'broadcast',
+        'Submit the transaction in a separately authorized execution phase',
+        false,
+        devtoolsTypes.boolean,
+        true
+    )
     .setAction(
         async ({
             eid,
@@ -60,12 +73,36 @@ task('lz:oft-adapter:solana:create', 'Creates new OFT Adapter (OFT Store PDA)')
             programId: programIdStr,
             tokenProgram: tokenProgramStr,
             computeUnitPriceScaleFactor,
+            broadcast,
         }: CreateOFTAdapterTaskArgs) => {
             validateSanAdapterConfig({
                 eid,
                 mint: mintStr,
                 configuredMint: process.env.SAN_SOLANA_MINT,
                 tokenProgram: tokenProgramStr,
+                programId: programIdStr,
+            })
+
+            if (!broadcast) {
+                console.log('SAN adapter arguments validated in dry-run mode; no transaction was built or submitted.')
+                return
+            }
+            if (process.env.SAN_MAINNET_EXECUTION_PHASE !== 'PHASE_5B_EXPLICITLY_AUTHORIZED') {
+                throw new Error('Mainnet adapter broadcast is disabled without a separately authorized execution phase')
+            }
+
+            const inspectionConnection = await createSolanaConnectionFactory()(eid)
+            requireSolanaMainnet(await inspectionConnection.getGenesisHash())
+            const inspectedMint = await getMint(
+                inspectionConnection,
+                new PublicKey(mintStr),
+                undefined,
+                new PublicKey(tokenProgramStr)
+            )
+            validateCanonicalSanMintAccount({
+                decimals: inspectedMint.decimals,
+                mintAuthority: inspectedMint.mintAuthority?.toBase58() ?? null,
+                freezeAuthority: inspectedMint.freezeAuthority?.toBase58() ?? null,
             })
 
             const { connection, umi, umiWalletKeyPair, umiWalletSigner } = await deriveConnection(eid)
@@ -74,7 +111,7 @@ task('lz:oft-adapter:solana:create', 'Creates new OFT Adapter (OFT Store PDA)')
             const tokenProgram = publicKey(tokenProgramStr)
             const mint = publicKey(mintStr)
 
-            const mintPDA = await getMint(connection, new PublicKey(mintStr), undefined, new PublicKey(tokenProgramStr))
+            const mintPDA = inspectedMint
             const mintDecimals = mintPDA.decimals
 
             const maxSupplyRaw = localDecimalsToMaxWholeTokens(mintDecimals)

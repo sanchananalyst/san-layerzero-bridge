@@ -47,13 +47,16 @@ export const findSolanaEndpointIdInGraph = async (
         }
     }
 
+    for (const { point } of graph.contracts) checkSolanaEndpoint(point.eid)
     for (const { vector } of graph.connections) {
         checkSolanaEndpoint(vector.from.eid)
         checkSolanaEndpoint(vector.to.eid)
-        if (solanaEid) return solanaEid
     }
 
-    throw new Error('No Solana Endpoint ID found. Ensure your OApp configuration includes a valid Solana endpoint.')
+    if (!solanaEid) {
+        throw new Error('No Solana Endpoint ID found. Ensure your OApp configuration includes a valid Solana endpoint.')
+    }
+    return solanaEid
 }
 
 /**
