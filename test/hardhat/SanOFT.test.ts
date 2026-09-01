@@ -44,7 +44,7 @@ describe('SanOFT', function () {
         // OFTTestPeer represents the remote OFT protocol behavior in unit tests only.
         // The production destination under test is always the unmodified SanOFT.
         solanaPeer = await OFTTestPeer.deploy('SAN Solana Test Peer', 'SAN', solanaEndpoint.address, owner.address)
-        sanOFT = await SanOFT.deploy('SAN', 'SAN', robinhoodEndpoint.address, owner.address)
+        sanOFT = await SanOFT.deploy('San Chan', 'SAN', robinhoodEndpoint.address, owner.address)
 
         await solanaEndpoint.setDestLzEndpoint(sanOFT.address, robinhoodEndpoint.address)
         await robinhoodEndpoint.setDestLzEndpoint(solanaPeer.address, solanaEndpoint.address)
@@ -54,7 +54,7 @@ describe('SanOFT', function () {
     })
 
     it('configures constructor metadata, endpoint, token address, and owner', async function () {
-        expect(await sanOFT.name()).to.equal('SAN')
+        expect(await sanOFT.name()).to.equal('San Chan')
         expect(await sanOFT.symbol()).to.equal('SAN')
         expect(await sanOFT.endpoint()).to.equal(robinhoodEndpoint.address)
         expect(await sanOFT.token()).to.equal(sanOFT.address)

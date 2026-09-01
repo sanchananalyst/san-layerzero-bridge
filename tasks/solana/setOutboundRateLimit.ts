@@ -3,7 +3,7 @@ import assert from 'assert'
 import { mplToolbox } from '@metaplex-foundation/mpl-toolbox'
 import { createSignerFromKeypair, publicKey, signerIdentity } from '@metaplex-foundation/umi'
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults'
-import { fromWeb3JsKeypair, toWeb3JsKeypair, toWeb3JsPublicKey } from '@metaplex-foundation/umi-web3js-adapters'
+import { fromWeb3JsKeypair, toWeb3JsPublicKey } from '@metaplex-foundation/umi-web3js-adapters'
 import { Keypair, PublicKey, sendAndConfirmTransaction } from '@solana/web3.js'
 import bs58 from 'bs58'
 import { task } from 'hardhat/config'
@@ -28,7 +28,7 @@ interface Args {
 
 task(
     'lz:oft:solana:outbound-rate-limit',
-    "Sets the Solana and EVM rate limits from './scripts/solana/utils/constants.ts'"
+    'Sets the Solana outbound rate limit for the explicitly supplied destination EID'
 )
     .addParam('mint', 'The OFT token mint public key')
     .addParam('programId', 'The OFT Program id')
@@ -47,7 +47,6 @@ task(
         const connection = await connectionFactory(taskArgs.eid)
         const umi = createUmi(connection.rpcEndpoint).use(mplToolbox())
         const umiWalletSigner = createSignerFromKeypair(umi, umiKeypair)
-        const web3WalletKeyPair = toWeb3JsKeypair(umiKeypair)
         umi.use(signerIdentity(umiWalletSigner))
 
         const solanaSdkFactory = createOFTFactory(
@@ -64,10 +63,9 @@ task(
             capacity: taskArgs.capacity,
             refillPerSecond: taskArgs.refillPerSecond,
         }
-        // for (const peer of graph.connections.filter((connection) => connection.vector.from.eid === solanaEid)) {
         try {
             const tx = deserializeTransactionMessage(
-                (await sdk.setOutboundRateLimit(EndpointId.SEPOLIA_V2_TESTNET, solanaRateLimits)).data
+                (await sdk.setOutboundRateLimit(taskArgs.dstEid, solanaRateLimits)).data
             )
             tx.sign(keypair)
             const txId = await sendAndConfirmTransaction(connection, tx, [keypair])
@@ -77,5 +75,6 @@ task(
             console.dir({ peerInfo }, { depth: null })
         } catch (error) {
             console.error(`setOutboundRateLimit failed:`, error)
+            throw error
         }
     })

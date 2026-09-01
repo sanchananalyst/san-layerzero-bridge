@@ -1,10 +1,15 @@
 import {
     BridgeObservation,
+    BridgePolicy,
     SAN_LAYERZERO_POLICY,
     validateLayerZeroObservation,
 } from '../../scripts/layerZeroConfigPolicy'
 
 const PEERS = { solana: '0x' + '11'.repeat(32), robinhood: '0x' + '22'.repeat(32) }
+const APPROVED_TEST_POLICY: BridgePolicy = {
+    ...SAN_LAYERZERO_POLICY,
+    robinhoodSourceConfirmations: 32n,
+}
 
 const fixture = (): BridgeObservation => ({
     deprecatedDvns: ['0xdead'],
@@ -53,12 +58,17 @@ const fixture = (): BridgeObservation => ({
 const fails = (mutate: (value: BridgeObservation) => void): void => {
     const value = fixture()
     mutate(value)
-    expect(() => validateLayerZeroObservation(value, PEERS)).toThrow()
+    expect(() => validateLayerZeroObservation(value, PEERS, APPROVED_TEST_POLICY)).toThrow()
 }
 
 describe('future deployed LayerZero configuration policy', () => {
-    it('accepts the exact explicit SAN policy', () => {
-        expect(() => validateLayerZeroObservation(fixture(), PEERS)).not.toThrow()
+    it('fails closed while Robinhood-source confirmations remain unresolved', () => {
+        expect(() => validateLayerZeroObservation(fixture(), PEERS)).toThrow(
+            'Robinhood-source confirmations policy is unresolved'
+        )
+    })
+    it('accepts an otherwise exact policy when a confirmation value is explicitly supplied', () => {
+        expect(() => validateLayerZeroObservation(fixture(), PEERS, APPROVED_TEST_POLICY)).not.toThrow()
     })
     it('rejects a Dead DVN', () =>
         fails((value) => {

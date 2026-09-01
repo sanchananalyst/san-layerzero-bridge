@@ -26,10 +26,7 @@ interface Args {
     refillPerSecond: bigint
 }
 
-task(
-    'lz:oft:solana:inbound-rate-limit',
-    "Sets the Solana and EVM rate limits from './scripts/solana/utils/constants.ts'"
-)
+task('lz:oft:solana:inbound-rate-limit', 'Sets the Solana inbound rate limit for the explicitly supplied source EID')
     .addParam('mint', 'The OFT token mint public key')
     .addParam('programId', 'The OFT Program id')
     .addParam('eid', 'Solana mainnet (30168) or testnet (40168)', undefined, types.eid)
@@ -76,5 +73,6 @@ task(
             console.dir({ peerInfo }, { depth: null })
         } catch (error) {
             console.error(`setInboundRateLimit failed:`, error)
+            throw error
         }
     })

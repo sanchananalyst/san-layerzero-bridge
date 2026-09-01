@@ -25,7 +25,7 @@ const deploy: DeployFunction = async (hre) => {
 
     const { address } = await deploy(contractName, {
         from: deployer,
-        args: ['SAN', 'SAN', endpointV2Deployment.address, owner],
+        args: ['San Chan', 'SAN', endpointV2Deployment.address, owner],
         log: true,
         skipIfAlreadyDeployed: false,
     })

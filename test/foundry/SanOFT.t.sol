@@ -48,7 +48,7 @@ contract SanOFTTest is TestHelperOz5 {
             )
         );
         sanOFT = SanOFT(
-            _deployOApp(type(SanOFT).creationCode, abi.encode("SAN", "SAN", address(endpoints[2]), address(this)))
+            _deployOApp(type(SanOFT).creationCode, abi.encode("San Chan", "SAN", address(endpoints[2]), address(this)))
         );
 
         solanaPeer.setPeer(2, addressToBytes32(address(sanOFT)));
@@ -59,7 +59,7 @@ contract SanOFTTest is TestHelperOz5 {
         assertEq(sanOFT.owner(), address(this));
         assertEq(sanOFT.token(), address(sanOFT));
         assertEq(sanOFT.totalSupply(), 0);
-        assertEq(sanOFT.name(), "SAN");
+        assertEq(sanOFT.name(), "San Chan");
         assertEq(sanOFT.symbol(), "SAN");
         assertEq(sanOFT.decimals(), SAN_DECIMALS);
         assertEq(sanOFT.sharedDecimals(), SAN_DECIMALS);

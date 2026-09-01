@@ -29,14 +29,18 @@ export interface ChainPolicy {
 }
 
 export interface BridgePolicy {
-    confirmations: bigint
+    solanaSourceConfirmations: bigint
+    robinhoodSourceConfirmations: bigint | null
     optionalThreshold: number
     solana: ChainPolicy
     robinhood: ChainPolicy
 }
 
 export const SAN_LAYERZERO_POLICY: BridgePolicy = {
-    confirmations: 32n,
+    solanaSourceConfirmations: 32n,
+    // Fail closed until DVN behavior and an L1-posting/finality-aligned value
+    // for Robinhood Nitro are documented and approved by humans.
+    robinhoodSourceConfirmations: null,
     optionalThreshold: 2,
     solana: {
         sendLibrary: '7a4WjyR8VZ7yZz5XJAKm39BUGn5iT9CKcv2pmG9tdXVH',
@@ -74,14 +78,15 @@ const validateUln = (
     observation: UlnObservation,
     policy: ChainPolicy,
     deprecated: Set<string>,
-    bridgePolicy: BridgePolicy
+    bridgePolicy: BridgePolicy,
+    expectedConfirmations: bigint
 ): void => {
     if (!observation.explicitNoRequired) throw new Error(`${label} does not explicitly override required DVNs to NONE`)
     if (observation.requiredDvns.length !== 0) throw new Error(`${label} required DVN count is not zero`)
     if (observation.optionalThreshold !== bridgePolicy.optionalThreshold) {
         throw new Error(`${label} optional threshold differs`)
     }
-    if (observation.confirmations !== bridgePolicy.confirmations) throw new Error(`${label} confirmations differ`)
+    if (observation.confirmations !== expectedConfirmations) throw new Error(`${label} confirmations differ`)
 
     const actual = normalizedSet(observation.optionalDvns)
     const expected = normalizedSet(policy.optionalDvns)
@@ -100,6 +105,9 @@ export const validateLayerZeroObservation = (
     expectedPeers: { solana: string; robinhood: string },
     policy: BridgePolicy = SAN_LAYERZERO_POLICY
 ): void => {
+    if (policy.robinhoodSourceConfirmations == null) {
+        throw new Error('Robinhood-source confirmations policy is unresolved; configuration validation fails closed')
+    }
     const deprecated = new Set(observation.deprecatedDvns.map(normalized))
     for (const chain of ['solana', 'robinhood'] as const) {
         const observed = observation[chain]
@@ -108,7 +116,11 @@ export const validateLayerZeroObservation = (
         assertEqual(observed.receiveLibrary, intended.receiveLibrary, `${chain} receive library`)
         assertEqual(observed.executor, intended.executor, `${chain} Executor`)
         assertEqual(observed.peer, expectedPeers[chain], `${chain} peer`)
-        validateUln(`${chain} send`, observed.send, intended, deprecated, policy)
-        validateUln(`${chain} receive`, observed.receive, intended, deprecated, policy)
+        const sendConfirmations =
+            chain === 'solana' ? policy.solanaSourceConfirmations : policy.robinhoodSourceConfirmations
+        const receiveConfirmations =
+            chain === 'solana' ? policy.robinhoodSourceConfirmations : policy.solanaSourceConfirmations
+        validateUln(`${chain} send`, observed.send, intended, deprecated, policy, sendConfirmations)
+        validateUln(`${chain} receive`, observed.receive, intended, deprecated, policy, receiveConfirmations)
     }
 }

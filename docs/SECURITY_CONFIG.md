@@ -122,6 +122,10 @@ Until Option 2 is implemented and tested, the absence of an EVM pause/rate limit
 
 ## Proposed initial rate-limit profiles
 
+> **Superseded:** the Phase 3 values below were engineering placeholders. Phase
+> 5A re-evaluated production market capacity; use
+> `docs/PRODUCTION_RATE_LIMITS.md` for the current unapplied recommendation.
+
 These are risk-budget proposals, not applied settings. They cap aggregate cross-chain flow per direction; the same bucket sizes are proposed in both directions. Robinhood-to-Solana execution is additionally bounded by escrow/TVL and Robinhood circulating supply.
 
 | Profile                    | Solana → Robinhood capacity | Refill                                     | Robinhood → Solana capacity | Frontend single-transfer maximum |

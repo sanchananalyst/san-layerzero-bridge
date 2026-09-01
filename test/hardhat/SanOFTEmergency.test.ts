@@ -68,7 +68,7 @@ describe('SanOFT emergency controls', function () {
         solanaEndpoint = await EndpointV2Mock.deploy(solanaEid)
         robinhoodEndpoint = await EndpointV2Mock.deploy(robinhoodEid)
         solanaPeer = await OFTTestPeer.deploy('SAN Bridge Test Peer', 'tSAN', solanaEndpoint.address, owner.address)
-        sanOFT = await SanOFT.deploy('SAN', 'SAN', robinhoodEndpoint.address, owner.address)
+        sanOFT = await SanOFT.deploy('San Chan', 'SAN', robinhoodEndpoint.address, owner.address)
 
         await solanaEndpoint.setDestLzEndpoint(sanOFT.address, robinhoodEndpoint.address)
         await robinhoodEndpoint.setDestLzEndpoint(solanaPeer.address, solanaEndpoint.address)
