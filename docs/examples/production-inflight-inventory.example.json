@@ -1,5 +1,70 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "inventoryId": "replace-with-reviewed-inventory-id",
-  "messages": []
+  "scanner": {
+    "name": "scanProductionInFlight",
+    "version": "1.0.0",
+    "bridgeCodeAuditTarget": "d28762288bb5180ff292f57eef7132191f2037ec",
+    "scannerSourceCommit": "0000000000000000000000000000000000000000"
+  },
+  "generatedAt": "2026-09-03T00:00:00.000Z",
+  "identities": {
+    "solana": {
+      "chain": "solana-mainnet",
+      "eid": 30168,
+      "endpoint": "76y77prsiCMvXMjuoZ5VRrhG5qYBrUMYTE5WgHqgjEn6",
+      "oftProgram": "9myHzfqsbJfGbYxpCvVCYqLaB4Co1RCo2a8T4QSkTvcD",
+      "oftStore": "REPLACE_WITH_DEPLOYED_STORE"
+    },
+    "robinhood": {
+      "chainId": 4663,
+      "eid": 30416,
+      "endpoint": "0x6F475642a6e85809B1c36Fa62763669b1b48DD5B",
+      "oft": "0x0000000000000000000000000000000000000000"
+    }
+  },
+  "ranges": {
+    "solana": {
+      "fromSlot": "0",
+      "toSlot": "1",
+      "finalizedSlot": "1",
+      "genesisHash": "REPLACE_WITH_MAINNET_GENESIS_HASH",
+      "startBlockhash": "REPLACE_WITH_START_BLOCKHASH",
+      "endBlockhash": "REPLACE_WITH_END_BLOCKHASH",
+      "complete": true,
+      "paginationComplete": true
+    },
+    "robinhood": {
+      "fromBlock": "0",
+      "toBlock": "1",
+      "finalizedBlock": "1",
+      "startBlockHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "endBlockHash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "complete": true,
+      "paginationComplete": true
+    }
+  },
+  "provenance": {
+    "model": "DUAL_RPC_RECONCILED",
+    "solanaProviders": [
+      "https://provider-a.example",
+      "https://provider-b.example"
+    ],
+    "robinhoodProviders": [
+      "https://provider-a.example",
+      "https://provider-b.example"
+    ],
+    "sourceEvidenceAgreement": true,
+    "destinationEvidenceAgreement": true,
+    "layerZeroApiCorroborated": true,
+    "layerZeroApiDisagreements": []
+  },
+  "messages": [],
+  "summary": {
+    "resultCount": 0,
+    "unresolvedPacketCount": 0,
+    "solanaToRobinhoodRaw": "0",
+    "robinhoodToSolanaRaw": "0"
+  },
+  "manifestChecksum": "0xa40122ceb250e54f85b34e3f7fe1f1bd0b468a33ca6960e5917545db44f0829a"
 }

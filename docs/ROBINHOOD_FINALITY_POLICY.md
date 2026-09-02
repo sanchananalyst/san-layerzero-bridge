@@ -35,6 +35,25 @@ Official references: [Robinhood Chain overview](https://docs.robinhood.com/chain
 [Ethereum Gasper/finality](https://ethereum.org/developers/docs/consensus-mechanisms/pos/gasper/),
 and [LayerZero production DVN guidance](https://docs.layerzero.network/v2/concepts/modular-security/production-dvn-configuration).
 
+## Phase 5A.3 re-verification (2026-09-03)
+
+Current Robinhood documentation still identifies mainnet chain ID `4663`, an
+Arbitrum Nitro dedicated chain with a first-come-first-served sequencer, Ethereum
+blob posting, Nitro `v3.11.2` full-node guidance, permissioned BoLD validators,
+and an approximately seven-day canonical withdrawal horizon. A read-only call to
+the public RPC accepted `eth_getBlockByNumber("finalized")` and returned a block
+number and hash. The production checker now anchors its EVM observation to that
+tag.
+
+That RPC tag is useful coherent-state evidence; it is not documented proof that
+the corresponding assertion has completed Ethereum posting, L1 finality, and
+the optimistic challenge horizon. Current LayerZero guidance still defines ULN
+`confirmations` as source-chain block depth and gives only general optimistic-L2
+guidance. Therefore none of `32`, `64`, or `128` is approved by this review.
+Governance and LayerZero/DVN operators must explicitly document the accepted
+sequencer, posting, validator, L1-finality, and challenge assumptions before the
+checker input can be approved.
+
 ## Candidate depths and observed latency
 
 Read-only RPC sampling near Robinhood block 51,910,050 observed approximately

@@ -167,6 +167,8 @@ See [Auditor handoff](./docs/AUDITOR_HANDOFF.md) and
 | Governance and handoff                     | [`docs/PRODUCTION_GOVERNANCE.md`](./docs/PRODUCTION_GOVERNANCE.md), [`docs/AUTHORITY_HANDOFF.md`](./docs/AUTHORITY_HANDOFF.md)                                                                                           |
 | Future inert runbooks                      | [`docs/MAINNET_DEPLOYMENT_RUNBOOK.md`](./docs/MAINNET_DEPLOYMENT_RUNBOOK.md), [`docs/MAINNET_WIRING_RUNBOOK.md`](./docs/MAINNET_WIRING_RUNBOOK.md), [`docs/MAINNET_CANARY_RUNBOOK.md`](./docs/MAINNET_CANARY_RUNBOOK.md) |
 | Build and artifact evidence                | [`docs/PRODUCTION_VERIFIABLE_BUILD.md`](./docs/PRODUCTION_VERIFIABLE_BUILD.md), [`docs/PRODUCTION_EVM_ARTIFACT.md`](./docs/PRODUCTION_EVM_ARTIFACT.md)                                                                   |
+| Activation and in-flight evidence          | [`docs/PRODUCTION_ACTIVATION_CHECKER.md`](./docs/PRODUCTION_ACTIVATION_CHECKER.md), [`docs/IN_FLIGHT_EVIDENCE_MODEL.md`](./docs/IN_FLIGHT_EVIDENCE_MODEL.md)                                                             |
+| Dependency alert triage                    | [`docs/DEPENDENCY_ALERT_TRIAGE.md`](./docs/DEPENDENCY_ALERT_TRIAGE.md)                                                                                                                                                   |
 
 Historical phase reports are retained as supporting evidence but are not the
 primary public navigation surface.
@@ -208,12 +210,8 @@ Before Phase 5B, the project still requires at least:
 - fresh LayerZero metadata and DVN/Executor review;
 - final Squads/Safe identities, signer separation, and recovery policy;
 - fresh market/liquidity review of rate limits;
-- a coherent, independently verifiable Solana observation strategy: the current
-  checker uses repeated finalized reads but cannot prove one historical common
-  slot across every account and configuration read;
-- an independently reviewed in-flight message scanner whose signed artifact
-  proves chain ranges, pathway identity, packet status, and completeness rather
-  than only supplying a hash and totals;
+- independent review of the Phase 5A.3 common-context checker and in-flight
+  scanner, followed by approval of a live manifest and provider independence;
 - a separate explicit authorization for every production transaction.
 
 See [production-readiness blockers](./docs/PHASE_5A1_BLOCKERS.md). No repository content

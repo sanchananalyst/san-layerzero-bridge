@@ -52,6 +52,20 @@ pnpm san:check-program-id
 
 Byte equality with the local artifact is not assumed: the local and verifiable workflows use different host/container toolchain environments. Record both hashes and investigate any difference; only the Docker output is the candidate reproducible artifact.
 
+## Phase 5A.3 reproducibility result
+
+The later authorized retry used two independent clean checkouts of exact bridge
+target `d28762288bb5180ff292f57eef7132191f2037ec` and the pinned image
+`solanafoundation/anchor@sha256:21ab8a16e19df4301a198d7a55ab2988549aa2d996e6b5ad229c1d95b9f2d326`.
+Both builds produced the same 571,864-byte ELF, raw SHA-256
+`b6c6a071143b263579e0d1313a7a9fe88c2a84024d42103c691ee8939d6ce543`,
+and executable hash
+`5068a15a15899e96d2b9a2c331573d490f064f2cd84cf88f43314371ed7d33d6`.
+The production ID occurred exactly once; testnet and starter IDs occurred zero
+times. The technical reproducibility gate passes. See
+`REPRODUCIBLE_BUILD_EVIDENCE.md`. Earlier host hashes remain historical and are
+superseded for deployment purposes.
+
 This ID is only a local deployment identity until the program is deployed in an explicitly approved later phase. Do not treat its presence in configuration as evidence of an on-chain program.
 
 ## Why SAN has its own program

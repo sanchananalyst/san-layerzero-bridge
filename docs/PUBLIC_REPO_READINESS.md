@@ -41,9 +41,9 @@ Completed controls:
 1. independently confirm both historical credentials are retired and check any
    prior mirrors, archives, CI artifacts, forks, or clones;
 2. obtain legal/license and LayerZero dependency/source-obligation review; and
-3. close Docker reproducibility, Robinhood finality, governance, current
-   LayerZero configuration, and independent security-audit blockers before any
-   Phase 5B authorization.
+3. independently approve the reproducible Solana hashes and close Robinhood
+   finality, governance, current LayerZero configuration, and independent
+   security-audit blockers before any Phase 5B authorization.
 
 Future deployment records may publish verified addresses and transaction/GUID
 evidence only after those events occur. This repository does not invent them.

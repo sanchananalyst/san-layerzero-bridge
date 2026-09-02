@@ -10,7 +10,7 @@ against exact base `515d008a0702bb3c4748ca87e0c689e689d4458b`.
 The prior audit target, `a53a86bcc0a18934a19f2889ba61ceb1633fa359`,
 is superseded because it did not contain the fail-closed activation boundary.
 
-Phase 5A.2 is pre-mainnet. No production program, contract, Store, escrow, peer,
+Phase 5A.3 is pre-mainnet. No production program, contract, Store, escrow, peer,
 security configuration, multisig, or liquidity exists. Later documentation-only
 commits do not change the code target. This package does not authorize Phase 5B.
 
@@ -90,13 +90,23 @@ tSAN/testnet identities are prohibited in production.
 
 ## Build evidence
 
+- **Phase 5A.3 reproducible Solana build: PASS.** Two independent clean
+  checkouts at exact bridge target
+  `d28762288bb5180ff292f57eef7132191f2037ec`, using only
+  `solanafoundation/anchor@sha256:21ab8a16e19df4301a198d7a55ab2988549aa2d996e6b5ad229c1d95b9f2d326`,
+  produced byte-identical 571,864-byte ELFs. Raw SHA-256:
+  `b6c6a071143b263579e0d1313a7a9fe88c2a84024d42103c691ee8939d6ce543`;
+  Solana executable hash:
+  `5068a15a15899e96d2b9a2c331573d490f064f2cd84cf88f43314371ed7d33d6`.
+  The production program ID occurred exactly once in each ELF; testnet and
+  starter IDs occurred zero times. See `REPRODUCIBLE_BUILD_EVIDENCE.md`.
 - **Superseded Phase 5A.1 evidence; do not approve for deployment after the
   initialize-paused patch.** Solana local ELF SHA-256:
   `1bb1093d63402e680d5d52fb3cb7cff44a0ada7b9e5835e35d44eca07b79a395`;
   executable hash:
   `955f6b81689a285cd7fe9875d7575347d9766149698b306f3b74e00e0f4bdf45`;
-  571,888 bytes. This is **not yet reproducible/verifiable** because Docker is
-  unavailable.
+  571,888 bytes. This historical host artifact is not reproducible/verifiable
+  evidence and is superseded for deployment purposes.
 - **Superseded Phase 5A.1 evidence; the constructor bytecode changed in Phase
   5A.2.** EVM creation SHA-256:
   `6769923ed725590f7a28f05f3e75d5c7bf47aa62c7feef99eff47812f6a5c06d`;
@@ -104,6 +114,21 @@ tSAN/testnet identities are prohibited in production.
   `97997ac5162118757e4f311db039d4df9999030a1ff02031ea859a9915ffa690`;
   ABI SHA-256:
   `ee20f8f68924c41c3a269b69c29ab8214c0e7cbb7cdd29789c2f47ea718e9da3`.
+
+## Phase 5A.3 evidence hardening
+
+The immutable bridge code target remains `d2876228…`. The separate Phase 5A.3
+tooling diff adds a one-response finalized Solana account snapshot and a
+dual-RPC, range-complete in-flight scanner with schema-v2 provenance. The
+manifest's end anchors must match the checker's Solana context slot/blockhash
+and Robinhood finalized block/hash. See `IN_FLIGHT_EVIDENCE_MODEL.md`.
+
+Docker reproducibility now passes. Two clean checkouts of `d2876228…` built
+byte-identical artifacts with raw SHA-256 `b6c6a071…ce543`, executable hash
+`5068a15a…d33d6`, and size 571,864 bytes. The dependency ledger contains 99
+current GitHub alerts; no dependency was changed and none was found to reach a
+new deployed bridge vulnerability. Robinhood confirmation policy remains
+deliberately unapproved.
 
 ## Findings, accepted risks, and decisions
 
@@ -115,13 +140,15 @@ zero CRITICAL, zero HIGH, and two MEDIUM evidence findings. This is independent
 Codex review work, not organizational independence or a substitute for a named
 external audit firm.
 
-The two MEDIUM Phase 5B blockers are:
-
-1. the production checker cannot prove all Solana values came from one exact
-   historical common slot; and
-2. the in-flight inventory is hashed and structurally validated, but its
-   external scanner, chain ranges, packet-status evidence, independence, and
-   completeness are not yet established.
+The two MEDIUM evidence findings have local Phase 5A.3 remediations. Hostile
+review of that tooling diff found one HIGH checker regression: the common-context
+collector initially validated independently selected canonical mint/escrow
+accounts without binding them to the decoded Store fields. The current patch
+fails closed on Store mint, Store escrow, and Store-PDA derivation; four focused
+tests and a fresh read-only bypass review passed. No unresolved CRITICAL, HIGH,
+or MEDIUM tooling finding remains. A live manifest cannot be approved until the
+production applications exist, and the checksum is not a reviewer signature.
+Provider organizational independence also remains a human check.
 
 Accepted design risks: multisig governance can maliciously upgrade/reconfigure;
 Solana buckets measure net imbalance through cross-refill rather than strict
@@ -129,8 +156,8 @@ gross daily volume; EVM owner concentration permits pause griefing/unpause;
 Executor/DVN/sequencer availability and correctness remain external assumptions;
 and surplus-only Solana fee withdrawal remains callable while paused.
 
-Unresolved human decisions/blockers: the two MEDIUM evidence gaps above, Docker
-reproducibility, independent external audit, Robinhood finality, current
+Unresolved human decisions/blockers: independent approval of the reproducible
+hashes, independent external audit, Robinhood finality, live scanner/provider approval, current
 LayerZero metadata/DVN contracts, all production application and multisig
 addresses, signer/threshold/separation/recovery policy, pause-only guardian
 decision, fresh economic limits, monitored disclosure contact, and explicit

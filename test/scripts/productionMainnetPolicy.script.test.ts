@@ -1,6 +1,7 @@
 import { PublicKey } from '@solana/web3.js'
 import { ethers } from 'ethers'
 
+import { InFlightManifest } from '../../scripts/inFlightInventory'
 import { SAN_LAYERZERO_POLICY } from '../../scripts/layerZeroConfigPolicy'
 import {
     ApprovedProductionState,
@@ -60,6 +61,11 @@ const approved = (): ApprovedProductionState => ({
     expectedInFlight: {
         inventoryId: 'pre-activation-zero-state',
         inventorySha256: `0x${'44'.repeat(32)}`,
+        scannerSourceCommit: '1'.repeat(40),
+        solanaFromSlot: 0n,
+        solanaToSlot: 1n,
+        robinhoodFromBlock: 0n,
+        robinhoodToBlock: 1n,
         solanaToRobinhoodRaw: 0n,
         robinhoodToSolanaRaw: 0n,
     },
@@ -84,6 +90,65 @@ const fixture = (): ProductionMainnetObservation => {
         explicitConfirmations: true,
         explicitOptionalDvns: true,
     })
+    const contextBlockhash = solanaAddress(20)
+    const robinhoodBlockHash = `0x${'66'.repeat(32)}`
+    const unsignedManifest: Omit<InFlightManifest, 'manifestChecksum'> = {
+        schemaVersion: 2,
+        inventoryId: policy.expectedInFlight.inventoryId,
+        scanner: {
+            name: 'scanProductionInFlight',
+            version: '1.0.0',
+            bridgeCodeAuditTarget: 'd28762288bb5180ff292f57eef7132191f2037ec',
+            scannerSourceCommit: policy.expectedInFlight.scannerSourceCommit,
+        },
+        generatedAt: '2026-09-03T00:00:00.000Z',
+        identities: {
+            solana: {
+                chain: 'solana-mainnet',
+                eid: 30168,
+                endpoint: PRODUCTION_SOLANA_ENDPOINT,
+                oftProgram: PRODUCTION_SOLANA_OFT_PROGRAM,
+                oftStore: policy.solanaOftStore,
+            },
+            robinhood: { chainId: 4663, eid: 30416, endpoint: PRODUCTION_ROBINHOOD_ENDPOINT, oft: policy.robinhoodOft },
+        },
+        ranges: {
+            solana: {
+                fromSlot: '0',
+                toSlot: '1',
+                finalizedSlot: '1',
+                genesisHash: 'genesis',
+                startBlockhash: 'start',
+                endBlockhash: contextBlockhash,
+                complete: true,
+                paginationComplete: true,
+            },
+            robinhood: {
+                fromBlock: '0',
+                toBlock: '1',
+                finalizedBlock: '1',
+                startBlockHash: `0x${'55'.repeat(32)}`,
+                endBlockHash: robinhoodBlockHash,
+                complete: true,
+                paginationComplete: true,
+            },
+        },
+        provenance: {
+            model: 'DUAL_RPC_RECONCILED',
+            solanaProviders: ['a', 'b'],
+            robinhoodProviders: ['c', 'd'],
+            sourceEvidenceAgreement: true,
+            destinationEvidenceAgreement: true,
+            layerZeroApiCorroborated: true,
+            layerZeroApiDisagreements: [],
+        },
+        messages: [],
+        summary: { resultCount: 0, unresolvedPacketCount: 0, solanaToRobinhoodRaw: '0', robinhoodToSolanaRaw: '0' },
+    }
+    const manifest: InFlightManifest = {
+        ...unsignedManifest,
+        manifestChecksum: policy.expectedInFlight.inventorySha256,
+    }
     return {
         solana: {
             eid: 30168,
@@ -131,6 +196,7 @@ const fixture = (): ProductionMainnetObservation => {
             runtimeCodeHash: policy.expectedRobinhoodRuntimeCodeHash,
             proxyImplementation: null,
             proxyAdmin: null,
+            blockHash: robinhoodBlockHash,
         },
         layerZero: {
             deprecatedDvns: ['0xdead'],
@@ -165,7 +231,44 @@ const fixture = (): ProductionMainnetObservation => {
             solana: { outbound: { ...solanaLimit }, inbound: { ...solanaLimit } },
             robinhood: { outbound: { ...evmLimit }, inbound: { ...evmLimit } },
         },
+        solanaContext: {
+            model: 'COMMON_CONTEXT_STRONG',
+            commitment: 'finalized',
+            contextSlot: 1n,
+            finalizedSlotBefore: 1n,
+            finalizedSlotAfter: 1n,
+            blockhash: contextBlockhash,
+            parentSlot: 0n,
+            accounts: [
+                'OFT Store',
+                'OFT peer config',
+                'canonical SAN mint',
+                'SAN escrow token account',
+                'production OFT program',
+                'production OFT ProgramData',
+                'LayerZero Endpoint program',
+                'LayerZero ULN302 program',
+                'Endpoint OApp registry',
+                'Endpoint default send-library config',
+                'Endpoint app send-library config',
+                'Endpoint default receive-library config',
+                'Endpoint app receive-library config',
+                'ULN message-library PDA',
+                'ULN custom send config',
+                'ULN custom receive config',
+            ].map((label, index) => ({
+                label,
+                address: solanaAddress(index + 30),
+                owner: solanaAddress(60),
+                executable: false,
+                lamports: '1',
+                dataLength: 1,
+                accountSha256: `0x${(index + 1).toString(16).padStart(2, '0').repeat(32)}`,
+            })),
+            remainingCrossCallGaps: ['Robinhood state is pinned independently.'],
+        },
         inFlight: {
+            manifest,
             inventoryId: policy.expectedInFlight.inventoryId,
             inventorySha256: policy.expectedInFlight.inventorySha256,
             messageCount: 0,
@@ -203,7 +306,31 @@ describe('complete production mainnet policy', () => {
         second.solana.paused = true
         second.inFlight.solanaSlot += 1n
         second.inFlight.robinhoodBlock += 1n
+        second.solanaContext.contextSlot += 1n
+        second.solanaContext.finalizedSlotBefore += 1n
+        second.solanaContext.finalizedSlotAfter += 1n
+        second.solanaContext.blockhash = solanaAddress(21)
+        second.robinhood.blockHash = `0x${'77'.repeat(32)}`
         expect(() => validateRepeatedProductionObservations(first, second)).not.toThrow()
+    })
+
+    it('accepts a finalized manifest ending before the state snapshot and rejects a future end', () => {
+        const value = fixture()
+        value.solanaContext.contextSlot = 2n
+        value.solanaContext.finalizedSlotAfter = 2n
+        value.solanaContext.blockhash = solanaAddress(21)
+        value.inFlight.solanaSlot = 2n
+        value.inFlight.robinhoodBlock = 2n
+        value.robinhood.blockHash = `0x${'77'.repeat(32)}`
+        expect(() =>
+            validateProductionMainnetObservation(value, approved(), ProductionExpectedState.PRE_ACTIVATION_INERT)
+        ).not.toThrow()
+        value.inFlight.manifest.ranges.solana.toSlot = '3'
+        const policy = approved()
+        policy.expectedInFlight.solanaToSlot = 3n
+        expect(() =>
+            validateProductionMainnetObservation(value, policy, ProductionExpectedState.PRE_ACTIVATION_INERT)
+        ).toThrow('newer than or conflict')
     })
 
     it('fails closed when the second RPC observation is interrupted', async () => {
@@ -352,6 +479,12 @@ describe('complete production mainnet policy', () => {
         })
         fails((value) => {
             value.inFlight.inventorySha256 = `0x${'55'.repeat(32)}`
+        })
+        fails((value) => {
+            value.inFlight.manifest.scanner.scannerSourceCommit = '2'.repeat(40)
+        })
+        fails((value) => {
+            value.inFlight.manifest.ranges.solana.toSlot = '2'
         })
         fails((value) => {
             value.solana.tvlRaw = 1n

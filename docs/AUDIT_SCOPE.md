@@ -40,8 +40,9 @@ Review every line of:
 - `config/mainnet.ts`
 - `deploy/SanOFT.ts`
 - `scripts/checkLayerZeroConfig.ts`, `checkProductionMainnet.ts`,
-  `inFlightInventory.ts`, `checkSolanaProgramId.ts`,
-  `inspectSanMint.ts`, `sanMintConfig.ts`, `layerZeroConfigPolicy.ts`,
+  `inFlightInventory.ts`, `scanProductionInFlight.ts`,
+  `solanaCommonContext.ts`, `checkSolanaProgramId.ts`,
+  `productionStoreBindings.ts`, `inspectSanMint.ts`, `sanMintConfig.ts`, `layerZeroConfigPolicy.ts`,
   `productionMainnetPolicy.ts`, `productionRateLimitPolicy.ts`,
   `productionToolingPolicy.ts`
 - `tasks/index.ts`, `tasks/common/config.get.ts`, `tasks/common/types.ts`,
@@ -72,7 +73,8 @@ that their IDs/RPCs cannot cross into the production registry or policy.
   `productionMainnetPolicy.script.test.ts`,
   `productionRateLimitPolicy.script.test.ts`,
   `productionToolingPolicy.script.test.ts`, and
-  `testnetPolicy.script.test.ts`
+  `testnetPolicy.script.test.ts`, `checkProductionStoreBindings.script.test.ts`,
+  and `solanaCommonContext.script.test.ts`
 - `contracts/mocks/OFTTestPeer.sol`, `test/mocks/ERC20Mock.sol`,
   `test/mocks/OFTComposerMock.sol` only as test isolation/support
 - `docs/ARCHITECTURE.md`, `ESCROW_SECURITY_REVIEW.md`,
@@ -82,10 +84,11 @@ that their IDs/RPCs cannot cross into the production registry or policy.
   `AUTHORITY_HANDOFF.md`, and all three mainnet runbooks/checklist.
 
 Verify source-to-artifact equivalence against the hashes in
-`PRODUCTION_EVM_ARTIFACT.md` and `PRODUCTION_VERIFIABLE_BUILD.md`. The latter is
-not yet a reproducible/verifiable artifact and is an audit blocker. All hashes
-recorded before the initialize-paused patch are superseded and must not be used
-to approve deployment.
+`PRODUCTION_EVM_ARTIFACT.md`, `PRODUCTION_VERIFIABLE_BUILD.md`, and
+`REPRODUCIBLE_BUILD_EVIDENCE.md`. The Phase 5A.3 Solana reproducibility gate
+passes; its hashes still require independent approval and later
+deployed-bytecode equivalence. All hashes recorded before the initialize-paused
+patch are superseded and must not be used to approve deployment.
 
 ## Review objectives
 
@@ -98,7 +101,10 @@ paused, every partial wiring state remains inert, interrupted activation is
 recoverable by re-pausing, and public activation is permissionless rather than
 an exclusive operator canary.
 
-Two evidence findings remain in scope and block Phase 5B: the checker does not
-prove one common historical Solana slot across all reads, and the external
-in-flight inventory does not yet carry independently verifiable scanner/range/
-packet-status provenance and completeness.
+Phase 5A.3 implements remediations for the two prior evidence findings: all
+critical Solana accounts are decoded from one finalized-context batch, and a
+dual-RPC range-complete in-flight scanner emits a source-commit-bound schema-v2
+manifest. Review these tooling changes as a separate diff target; they do not
+change the immutable bridge code target. Docker reproducibility passes; live
+pre-deployment evidence, independent hash approval, external audit, and
+Robinhood finality still block Phase 5B.

@@ -68,20 +68,19 @@ may bridge within the configured controls and may race the operator canary.
 
 ## Remaining risks and blockers
 
-- **MEDIUM evidence blocker:** Solana Store, peer, SPL, loader, registry, and
-  LayerZero state are gathered through multiple finalized calls. Repeated
-  equality and independent providers reduce risk but do not prove one exact
-  historical common-slot snapshot.
-- **MEDIUM evidence blocker:** the in-flight inventory parser authenticates
-  exact bytes and checks totals, but no independently reviewed scanner or signed
-  chain-range/pathway/packet-status artifact yet proves provenance and
-  completeness.
+- **MEDIUM evidence hardening implemented:** Solana Store, peer, SPL, loader,
+  registry, and LayerZero accounts are decoded from one finalized common-context
+  response. Live evidence and independent review remain required.
+- **MEDIUM evidence hardening implemented:** the in-flight scanner requires
+  dual-provider, range-complete, source/destination packet evidence bound to a
+  schema-v2 manifest. A live independently approved manifest remains required.
 
 - **HIGH operational blocker:** exact production Store/escrow/SanOFT/multisig
   identities do not yet exist; current LayerZero metadata must be refreshed and
   independently approved before wiring.
-- **HIGH release blocker:** Docker/verifiable, digest-pinned, reproducible Solana
-  build is not complete.
+- **HIGH approval blocker:** the Docker/verifiable, digest-pinned Solana
+  reproducibility gate passes; the recorded hashes still require independent
+  approval and later deployed-bytecode equivalence.
 - **HIGH policy blocker:** Robinhood source finality/confirmation risk acceptance
   is unresolved.
 - **HIGH process blocker:** an independent audit of the exact code commit,
