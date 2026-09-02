@@ -12,9 +12,9 @@ Every item requires recorded evidence and human approval. Phase 3.6 does not aut
 - [ ] SAN OFT program ID verified as `9myHzfqsbJfGbYxpCvVCYqLaB4Co1RCo2a8T4QSkTvcD`
 - [ ] Program built with explicit `OFT_ID=9myHzfqsbJfGbYxpCvVCYqLaB4Co1RCo2a8T4QSkTvcD`
 - [ ] Program source, dependency revisions, declared ID, reproducible bytecode, and deployed bytecode verified
-- [ ] Docker-verifiable `oft.so` produced on a healthy Docker host; Phase 5A.1 Docker client is present but the daemon is unavailable
-- [ ] Docker ELF SHA-256, `solana-verify` executable hash, and program-ID embedding recorded and independently reproduced
-- [ ] Patched Phase 5A.2 ELF and executable hashes recorded and independently reproduced; the Phase 5A.1 hashes are superseded
+- [x] Docker-verifiable `oft.so` produced twice from clean checkouts on a healthy Docker host using the exact pinned image digest
+- [x] Docker ELF SHA-256, `solana-verify` executable hash, and program-ID embedding recorded and independently reproduced
+- [x] Patched Phase 5A.2 ELF and executable hashes recorded and independently reproduced; the Phase 5A.1 host hashes are superseded
 - [ ] Program upgrade authority and governance policy known
 - [ ] OFT Store PDA independently derived and verified
 - [ ] Escrow address independently derived/recorded and canonical SAN mint verified

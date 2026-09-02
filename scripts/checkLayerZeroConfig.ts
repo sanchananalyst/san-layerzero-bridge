@@ -3,9 +3,9 @@ import { createUmi } from '@metaplex-foundation/umi-bundle-defaults'
 import { Connection, PublicKey } from '@solana/web3.js'
 import { ethers } from 'ethers'
 
-import { EndpointProgram, UlnProgram } from '@layerzerolabs/lz-solana-sdk-v2'
+import { EndpointPDADeriver, EndpointProgram, UlnPDADeriver, UlnProgram } from '@layerzerolabs/lz-solana-sdk-v2'
 import { defaultFetchMetadata } from '@layerzerolabs/metadata-tools'
-import { oft } from '@layerzerolabs/oft-v2-solana-sdk'
+import { OftPDA, oft } from '@layerzerolabs/oft-v2-solana-sdk'
 
 import {
     BridgeObservation,
@@ -14,6 +14,7 @@ import {
     UlnObservation,
     validateLayerZeroObservation,
 } from './layerZeroConfigPolicy'
+import { SolanaCommonContextSnapshot, SolanaContextAccountRequest, toUmiRpcAccount } from './solanaCommonContext'
 
 const SOLANA_EID = 30168
 const ROBINHOOD_EID = 30416
@@ -121,8 +122,10 @@ export const inspectRobinhoodLayerZero = async (
 export const inspectSolanaLayerZero = async (
     rpcUrl: string,
     oftStoreAddress: string,
-    minContextSlot?: number
+    minContextSlot?: number,
+    snapshot?: SolanaCommonContextSnapshot
 ): Promise<ChainObservation> => {
+    if (snapshot) return inspectSolanaLayerZeroSnapshot(oftStoreAddress, snapshot)
     const connection = new Connection(rpcUrl, 'finalized')
     const accountConfig = { commitment: 'finalized' as const, minContextSlot }
     const store = new PublicKey(oftStoreAddress)
@@ -160,12 +163,91 @@ export const inspectSolanaLayerZero = async (
     }
 }
 
+export const solanaLayerZeroContextAccounts = (oftStoreAddress: string): SolanaContextAccountRequest[] => {
+    const store = new PublicKey(oftStoreAddress)
+    const endpointDeriver = new EndpointPDADeriver(SOLANA_ENDPOINT)
+    const ulnDeriver = new UlnPDADeriver(new PublicKey(SAN_LAYERZERO_POLICY.solana.sendLibrary))
+    const [peer] = new OftPDA(publicKey(SOLANA_OFT_PROGRAM.toBase58())).peer(publicKey(oftStoreAddress), ROBINHOOD_EID)
+    return [
+        { label: 'OFT peer config', address: new PublicKey(peer.toString()) },
+        { label: 'Endpoint OApp registry', address: endpointDeriver.oappRegistry(store)[0] },
+        {
+            label: 'Endpoint app send-library config',
+            address: endpointDeriver.sendLibraryConfig(store, ROBINHOOD_EID)[0],
+        },
+        {
+            label: 'Endpoint default send-library config',
+            address: endpointDeriver.defaultSendLibraryConfig(ROBINHOOD_EID)[0],
+        },
+        {
+            label: 'Endpoint app receive-library config',
+            address: endpointDeriver.receiveLibraryConfig(store, ROBINHOOD_EID)[0],
+        },
+        {
+            label: 'Endpoint default receive-library config',
+            address: endpointDeriver.defaultReceiveLibraryConfig(ROBINHOOD_EID)[0],
+        },
+        { label: 'ULN message-library PDA', address: new PublicKey(SOLANA_MESSAGE_LIB) },
+        { label: 'ULN custom send config', address: ulnDeriver.sendConfig(ROBINHOOD_EID, store)[0] },
+        { label: 'ULN custom receive config', address: ulnDeriver.receiveConfig(ROBINHOOD_EID, store)[0] },
+    ]
+}
+
+const inspectSolanaLayerZeroSnapshot = (
+    oftStoreAddress: string,
+    snapshot: SolanaCommonContextSnapshot
+): ChainObservation => {
+    const store = new PublicKey(oftStoreAddress)
+    const endpointDeriver = new EndpointPDADeriver(SOLANA_ENDPOINT)
+    const ulnDeriver = new UlnPDADeriver(new PublicKey(SAN_LAYERZERO_POLICY.solana.sendLibrary))
+    const [peerAddress] = new OftPDA(publicKey(SOLANA_OFT_PROGRAM.toBase58())).peer(
+        publicKey(oftStoreAddress),
+        ROBINHOOD_EID
+    )
+    const peerKey = new PublicKey(peerAddress.toString())
+    const peer = oft.accounts.deserializePeerConfig(toUmiRpcAccount(peerKey, snapshot.account(peerKey)))
+
+    const sendAddress = endpointDeriver.sendLibraryConfig(store, ROBINHOOD_EID)[0]
+    const receiveAddress = endpointDeriver.receiveLibraryConfig(store, ROBINHOOD_EID)[0]
+    const sendLibrary = EndpointProgram.accounts.SendLibraryConfig.fromAccountInfo(snapshot.account(sendAddress))[0]
+    const receiveLibrary = EndpointProgram.accounts.ReceiveLibraryConfig.fromAccountInfo(
+        snapshot.account(receiveAddress)
+    )[0]
+    if (sendLibrary.messageLib.equals(PublicKey.default) || receiveLibrary.messageLib.equals(PublicKey.default)) {
+        throw new Error('Solana send/receive library is inherited from Endpoint defaults')
+    }
+    if (
+        sendLibrary.messageLib.toBase58() !== SOLANA_MESSAGE_LIB ||
+        receiveLibrary.messageLib.toBase58() !== SOLANA_MESSAGE_LIB
+    ) {
+        throw new Error('Solana resolved message-library PDA differs')
+    }
+    const messageLibraryInfo = snapshot.account(new PublicKey(SOLANA_MESSAGE_LIB))
+    const sendAddressUln = ulnDeriver.sendConfig(ROBINHOOD_EID, store)[0]
+    const receiveAddressUln = ulnDeriver.receiveConfig(ROBINHOOD_EID, store)[0]
+    const send = UlnProgram.accounts.SendConfig.fromAccountInfo(snapshot.account(sendAddressUln))[0]
+    const receive = UlnProgram.accounts.ReceiveConfig.fromAccountInfo(snapshot.account(receiveAddressUln))[0]
+
+    return {
+        sendLibrary: messageLibraryInfo.owner.toBase58(),
+        receiveLibrary: messageLibraryInfo.owner.toBase58(),
+        executor: send.executor.executor.toBase58(),
+        sendLibraryExplicit: true,
+        receiveLibraryExplicit: true,
+        executorExplicit: send.executor.executor.toBase58() !== PublicKey.default.toBase58(),
+        peer: ethers.utils.hexlify(peer.peerAddress).toLowerCase(),
+        send: normalizeSolanaUln(send),
+        receive: normalizeSolanaUln(receive),
+    }
+}
+
 export const collectLayerZeroObservation = async (
     solanaRpcUrl: string,
     robinhoodRpcUrl: string,
     solanaStore: string,
     robinhoodOft: string,
-    snapshot?: { solanaMinContextSlot?: number; robinhoodBlockTag?: number }
+    snapshot?: { solanaMinContextSlot?: number; robinhoodBlockTag?: number },
+    solanaSnapshot?: SolanaCommonContextSnapshot
 ): Promise<BridgeObservation> => {
     const metadata: any = await defaultFetchMetadata(METADATA_URL)
     const robinhood = metadata['robinhood']
@@ -185,7 +267,7 @@ export const collectLayerZeroObservation = async (
             .map(([address]) => address)
     )
     return {
-        solana: await inspectSolanaLayerZero(solanaRpcUrl, solanaStore, snapshot?.solanaMinContextSlot),
+        solana: await inspectSolanaLayerZero(solanaRpcUrl, solanaStore, snapshot?.solanaMinContextSlot, solanaSnapshot),
         robinhood: await inspectRobinhoodLayerZero(
             robinhoodRpcUrl,
             robinhoodOft,

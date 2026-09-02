@@ -2,7 +2,7 @@
 
 `pnpm san:check-production` is a read-only, fail-closed production snapshot
 checker. It creates no signer, instruction, transaction, or proposal. It queries
-Solana at `finalized`, queries Robinhood JSON-RPC, resolves current LayerZero
+Solana and Robinhood at finalized anchors, resolves current LayerZero
 metadata/configuration, and exits nonzero on any missing or unexpected value.
 
 ## Explicit expected state
@@ -29,7 +29,9 @@ The checker reads and validates:
   executable flag, upgradeable-loader owner, ProgramData address, ProgramData
   owner/non-executable state, upgrade authority, and executable SHA-256;
 - escrow account program ownership, canonical mint, Store authority, balance,
-  and Store TVL;
+  and Store TVL; the decoded Store's immutable token mint and escrow must equal
+  canonical SAN and the approved escrow, and the Store must be the production
+  `OFT` PDA derived from that escrow;
 - Robinhood pause state, owner, Endpoint delegate, runtime bytecode hash, and
   EIP-1967 implementation/admin slots; any proxy slot is rejected;
 - exact bidirectional peers, explicitly app-selected send/receive libraries,
@@ -38,9 +40,12 @@ The checker reads and validates:
 - Solana inbound/outbound and Robinhood inbound/outbound rate limits against the
   selected canary profile;
 - Robinhood supply, both in-flight directions, Solana TVL, escrow backing, and
-  positive RPC snapshot heights. Robinhood reads are pinned to one block;
-  Solana reads use finalized commitment plus `minContextSlot` where supported.
-  Two consecutive complete observations must match before success.
+  positive finalized snapshot heights. Robinhood reads are pinned to one
+  `finalized` block number and hash. All critical Solana accounts are fetched in
+  one `getMultipleAccountsInfoAndContext` response and decoded only from those
+  returned bytes. Its context slot is bounded by finalized heads and bound to a
+  fetched blockhash. Two consecutive complete observations must match before
+  success.
 - every privileged role differs from all explicitly supplied bootstrap/deployer
   identities.
 
@@ -69,21 +74,31 @@ does not infer a multisig, confirmation count, deployment address, or bytecode
 hash.
 
 In-flight messages are not represented by one authoritative on-chain counter.
-An independent event/message scanner must therefore write the JSON inventory
-shape in `docs/examples/production-inflight-inventory.example.json`. Each entry
-has a unique 32-byte LayerZero GUID, direction, positive decimal `amountRaw`,
-and literal `in_flight` status. The checker derives both directional totals from
-the file; no `SAN_OBSERVED_IN_FLIGHT_*` amount is accepted. The reviewed
-`SAN_APPROVED_IN_FLIGHT_INVENTORY_SHA256`, ID, and totals must match exactly.
+`pnpm san:scan-production-inflight` therefore scans the complete approved range
+through each chain's finalized head using two independent RPC providers per
+chain. It reconciles OFT source events with Endpoint packet evidence, reconciles
+destination OFT receive events, rejects duplicate GUIDs and provider
+disagreement, and uses LayerZero Scan only as corroboration. The API never
+overrides missing on-chain evidence.
 
-The inventory generator and its chain-range evidence remain a separately
-reviewed input. A hash binds the checker to that exact artifact; it does not make
-an operator-authored inventory independent by itself.
+The schema-v2 manifest binds scanner name/version/source commit, bridge code
+target, exact EIDs/Endpoints/OApps, both finalized ranges and boundary hashes,
+pagination/completeness flags, provider identities, per-message evidence,
+directional raw totals, and a canonical checksum. The checker separately pins
+the approved scanner commit, ranges, manifest checksum, inventory ID, and
+totals. Its range ends must be finalized and no later than the checker's Solana
+common-context slot and Robinhood finalized block; if a height is equal, its
+blockhash must also match. See
+`IN_FLIGHT_EVIDENCE_MODEL.md` and the example manifest.
+
+An approved checksum prevents substitution after review; it is not a signature
+and does not prove reviewer independence. Human review of the scanner commit,
+ranges, provider separation, and final manifest remains mandatory.
 
 ## Invocation
 
-Use two independent Solana providers and two independent Robinhood providers in
-separate runs. After populating only non-secret approved values:
+First generate and independently review the manifest with two Solana and two
+Robinhood RPC providers. Then populate only non-secret approved values and run:
 
 ```bash
 SAN_EXPECTED_ACTIVATION_STATE=PRE_ACTIVATION_INERT \
@@ -91,6 +106,13 @@ SOLANA_MAINNET_RPC_URL=<READ_ONLY_SOLANA_RPC> \
 ROBINHOOD_RPC_URL=<READ_ONLY_ROBINHOOD_RPC> \
 pnpm san:check-production
 ```
+
+The approved manifest must be recent enough for the ceremony and cannot extend
+beyond the checker's state snapshot. The checker exposes any intervening range;
+in supported pre-activation/initial-canary states, pause/zero-state requirements
+and exact accounting provide the additional fail-closed guard. RPC providers
+must be operationally independent; merely using two URLs for one backend does
+not satisfy the human evidence requirement.
 
 Before initial activation, archive successful `PRE_ACTIVATION_INERT` results
 from two provider pairs. Unpause Robinhood first only while Robinhood supply and

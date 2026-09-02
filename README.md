@@ -60,6 +60,19 @@ It supersedes `a53a86bcc0a18934a19f2889ba61ceb1633fa359` because both bridge
 applications now initialize paused and the production activation checker and
 partial-configuration regressions are part of the reviewed code boundary.
 
+### Reproducible Solana artifact
+
+Phase 5A.3 produced two byte-identical verifiable builds of the immutable
+production-code audit target `d28762288bb5180ff292f57eef7132191f2037ec`.
+
+- ELF SHA-256: `b6c6a071143b263579e0d1313a7a9fe88c2a84024d42103c691ee8939d6ce543`
+- Executable hash: `5068a15a15899e96d2b9a2c331573d490f064f2cd84cf88f43314371ed7d33d6`
+- ELF size: `571,864` bytes
+
+See [`docs/PRODUCTION_VERIFIABLE_BUILD.md`](./docs/PRODUCTION_VERIFIABLE_BUILD.md)
+for the pinned image, exact build command, and reproducibility evidence.
+Independent artifact approval remains required before Phase 5B.
+
 The fail-closed change prevents bridging throughout incremental deployment,
 wiring, security configuration, and governance handoff. Activation is still a
 separate governance action: once both applications are unpaused, the bridge is
@@ -167,6 +180,8 @@ See [Auditor handoff](./docs/AUDITOR_HANDOFF.md) and
 | Governance and handoff                     | [`docs/PRODUCTION_GOVERNANCE.md`](./docs/PRODUCTION_GOVERNANCE.md), [`docs/AUTHORITY_HANDOFF.md`](./docs/AUTHORITY_HANDOFF.md)                                                                                           |
 | Future inert runbooks                      | [`docs/MAINNET_DEPLOYMENT_RUNBOOK.md`](./docs/MAINNET_DEPLOYMENT_RUNBOOK.md), [`docs/MAINNET_WIRING_RUNBOOK.md`](./docs/MAINNET_WIRING_RUNBOOK.md), [`docs/MAINNET_CANARY_RUNBOOK.md`](./docs/MAINNET_CANARY_RUNBOOK.md) |
 | Build and artifact evidence                | [`docs/PRODUCTION_VERIFIABLE_BUILD.md`](./docs/PRODUCTION_VERIFIABLE_BUILD.md), [`docs/PRODUCTION_EVM_ARTIFACT.md`](./docs/PRODUCTION_EVM_ARTIFACT.md)                                                                   |
+| Activation and in-flight evidence          | [`docs/PRODUCTION_ACTIVATION_CHECKER.md`](./docs/PRODUCTION_ACTIVATION_CHECKER.md), [`docs/IN_FLIGHT_EVIDENCE_MODEL.md`](./docs/IN_FLIGHT_EVIDENCE_MODEL.md)                                                             |
+| Dependency alert triage                    | [`docs/DEPENDENCY_ALERT_TRIAGE.md`](./docs/DEPENDENCY_ALERT_TRIAGE.md)                                                                                                                                                   |
 
 Historical phase reports are retained as supporting evidence but are not the
 primary public navigation surface.
@@ -202,18 +217,15 @@ requires independent change review.
 
 Before Phase 5B, the project still requires at least:
 
-- a reproducible, digest-pinned Docker/verifiable Solana build;
+- independent approval of the reproducible Solana artifact and recorded
+  ELF/executable hashes;
 - independent review of the exact production commit and artifacts;
 - an approved Robinhood finality/confirmation policy;
 - fresh LayerZero metadata and DVN/Executor review;
 - final Squads/Safe identities, signer separation, and recovery policy;
 - fresh market/liquidity review of rate limits;
-- a coherent, independently verifiable Solana observation strategy: the current
-  checker uses repeated finalized reads but cannot prove one historical common
-  slot across every account and configuration read;
-- an independently reviewed in-flight message scanner whose signed artifact
-  proves chain ranges, pathway identity, packet status, and completeness rather
-  than only supplying a hash and totals;
+- independent review of the Phase 5A.3 common-context checker and in-flight
+  scanner, followed by approval of a live manifest and provider independence;
 - a separate explicit authorization for every production transaction.
 
 See [production-readiness blockers](./docs/PHASE_5A1_BLOCKERS.md). No repository content

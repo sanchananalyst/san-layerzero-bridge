@@ -16,6 +16,7 @@
     "san:check-program-id": "ts-node scripts/checkSolanaProgramId.ts",
     "san:check-layerzero-config": "ts-node scripts/checkLayerZeroConfig.ts",
     "san:check-production": "ts-node scripts/checkProductionMainnet.ts",
+    "san:scan-production-inflight": "ts-node scripts/scanProductionInFlight.ts",
     "san:testnet:prepare-asset": "ts-node scripts/prepareTestnetAsset.ts",
     "test": "$npm_execpath run test:forge && $npm_execpath run test:hardhat",
     "test:anchor": "ts-node scripts/ensureLocalRuntimeWallet.ts && OFT_ID=9myHzfqsbJfGbYxpCvVCYqLaB4Co1RCo2a8T4QSkTvcD anchor test",

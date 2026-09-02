@@ -45,9 +45,10 @@ holder may bridge within the configured limits and may race the operator canary.
    signed chain-range/packet-status proof establishing provenance and
    completeness.
 
-These do not reopen the fixed fail-open initialization finding, but both block
-Phase 5B. Docker reproducibility, Robinhood finality, current LayerZero metadata,
-and final Squads/Safe evidence also remain open.
+Phase 5A.3 implements local remediations for both evidence gaps. Live evidence
+and independent review still block Phase 5B. Docker reproducibility now passes;
+independent hash approval, Robinhood finality, current LayerZero metadata, and
+final Squads/Safe evidence remain open.
 
 ## Commit interpretation
 
