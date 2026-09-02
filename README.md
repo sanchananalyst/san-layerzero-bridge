@@ -1,510 +1,196 @@
-<p align="center">
-  <a href="https://layerzero.network">
-    <picture>
-      <source srcset="https://docs.layerzero.network/img/LayerZero_Logo_White.svg" media="(prefers-color-scheme: dark)">
-      <source srcset="https://docs.layerzero.network/img/LayerZero_Logo_Black.svg" media="(prefers-color-scheme: light)">
-      <img alt="LayerZero" src="https://docs.layerzero.network/img/LayerZero_Logo_Black.svg" style="width: 400px;">
-    </picture>
-  </a>
-</p>
+# SAN LayerZero Bridge
 
-<p align="center">
- <a href="https://docs.layerzero.network/" style="color: #a77dff">LayerZero Docs</a>
-</p>
+## Pre-Mainnet Security Review
 
-<h1 align="center">SAN LayerZero V2 Bridge</h1>
+This repository contains the proposed LayerZero V2 bridge for the canonical SAN
+token between Solana and Robinhood Chain.
 
-<p align="center">Pre-mainnet production-readiness source and tests for bridging canonical SAN from Solana to a standard LayerZero OFT representation on Robinhood Chain.</p>
+**The canonical SAN mainnet bridge has not been deployed or activated. No
+mainnet SAN bridge is currently live.** The implementation completed an
+end-to-end testnet `lock → mint → burn → unlock` round trip using a separate
+`tSAN` test token. All testnet addresses and assets are test-only.
 
-> **Production safety notice:** This repository is in Phase 5A.1, before mainnet execution. No deployment, creation, wiring, authority, recovery, rate-limit, send, mint, burn, approval, liquidity, or other blockchain transaction is authorized by this repository or README. Transaction-producing mainnet task paths are structurally disabled in this revision. Use only the reviewed future runbooks after a separately approved Phase 5B change. Never add private keys or mnemonics.
+We are publishing the implementation before mainnet deployment to invite
+independent technical and security review. Community review is not a formal
+audit, certification, or assurance that the bridge is safe. Cross-chain bridges
+carry smart-contract, protocol, validator/DVN, sequencer, governance, key-
+management, and operational risk.
 
-SAN bridging is cross-chain infrastructure and carries smart-contract, protocol,
-governance, validator/DVN, sequencer, and operational risk. Canonical Solana SAN
-at `GQz5ThKHNcuAvMKA8rCPSdoFUoApk9Fi8qB9m3Gqpump` remains the underlying asset.
-Any Robinhood SAN representation must remain backed by SAN held in the canonical
-Solana Adapter escrow, accounting for explicitly analyzed in-flight messages.
-Verified production application addresses will be published only after an
-authorized deployment and independent verification. See
-[`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md),
-[`docs/PRODUCTION_SECURITY_REVIEW.md`](./docs/PRODUCTION_SECURITY_REVIEW.md), and
-[`SECURITY.md`](./SECURITY.md). The walkthrough below is retained upstream
-reference material, not an approved production procedure.
+## Canonical asset and invariant
 
-## Table of Contents
+Canonical SAN is the existing six-decimal legacy SPL token on Solana:
 
-- [Prerequisite Knowledge](#prerequisite-knowledge)
-- [Requirements](#requirements)
-- [Scaffold this example](#scaffold-this-example)
-- [Helper Tasks](#helper-tasks)
-- [Setup](#setup)
-- [Build](#build)
-- [Deploy](#deploy)
-- [Enable Messaging](#enable-messaging)
-- [Sending OFT](#sending-oft)
-- [Next Steps](#next-steps)
-- [Production Deployment Checklist](#production-deployment-checklist)
-- [Appendix](#appendix)
-  - [Running tests](#running-tests)
-  - [Adding other chains](#adding-other-chains)
-  - [Using Multisigs](#using-multisigs)
-  - [LayerZero Hardhat Helper Tasks](#layerzero-hardhat-helper-tasks)
-  - [Solana Program Verification](#solana-program-verification)
-  - [Troubleshooting](#troubleshooting)
-
-## Prerequisite Knowledge
-
-- [What is an OFT (Omnichain Fungible Token) ?](https://docs.layerzero.network/v2/concepts/applications/oft-standard)
-- [What is an OApp (Omnichain Application) ?](https://docs.layerzero.network/v2/concepts/applications/oapp-standard)
-
-## Requirements
-
-- Rust `1.84.1`
-- Anchor `0.31.1`
-- Solana CLI `2.2.20`
-- Docker `28.3.0`
-- Node.js `>=20.19.5`
-- `pnpm` (recommended) - or another package manager of your choice (npm, yarn)
-- `forge` (optional) - `>=0.2.0` for testing, and if not using Hardhat for compilation
-
-## Scaffold this example
-
-Create your local copy of this example:
-
-```bash
-pnpm dlx create-lz-oapp@latest
+```text
+GQz5ThKHNcuAvMKA8rCPSdoFUoApk9Fi8qB9m3Gqpump
 ```
 
-Specify the directory, select `OFT (Solana)` and proceed with the installation.
+The Solana side uses the official LayerZero OFT Adapter in lock/unlock mode. The
+Robinhood representation uses a non-upgradeable standard LayerZero OFT with no
+arbitrary mint entry point.
 
-Note that `create-lz-oapp` will also automatically run the dependencies install step for you.
+Core supply invariant, subject to explicit reconciliation of in-flight messages:
 
-## Helper Tasks
-
-Throughout this walkthrough, helper tasks will be used. For the full list of available helper tasks, refer to the [LayerZero Hardhat Helper Tasks section](#layerzero-hardhat-helper-tasks). All commands can be run at the project root.
-
-## Setup
-
-<details>
-<summary> Docker</summary>
-<br>
-
-[Docker](https://docs.docker.com/get-started/get-docker/) is required to build using anchor. We highly recommend that you use the most up-to-date Docker version to avoid any issues with anchor
-builds.
-
-</details>
-
-<details>
-<summary>Install Rust</summary>
-<br>
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+```text
+Robinhood SAN total supply
+    <= Solana OFTStore.tvl_ld
+    <= canonical SAN held in the Solana bridge escrow
 ```
 
-</details>
+Proposed production identities:
 
-<details>
-<summary>Install Solana <code>2.2.20</code></summary>
-<br>
+| Item                          | Value                                          |
+| ----------------------------- | ---------------------------------------------- |
+| Canonical SAN mint            | `GQz5ThKHNcuAvMKA8rCPSdoFUoApk9Fi8qB9m3Gqpump` |
+| Production Solana OFT program | `9myHzfqsbJfGbYxpCvVCYqLaB4Co1RCo2a8T4QSkTvcD` |
+| Solana mainnet LayerZero EID  | `30168`                                        |
+| Robinhood Chain ID            | `4663`                                         |
+| Robinhood LayerZero EID       | `30416`                                        |
 
-```bash
-sh -c "$(curl -sSfL https://release.anza.xyz/v2.2.20/install)"
+The OFT Store, SAN escrow, Robinhood `SanOFT`, peers, multisigs, and production
+security configuration do not yet exist. Verified application addresses will be
+published only after a separately authorized deployment and independent
+read-back.
+
+## Security Review Requested
+
+We welcome review from Solana, LayerZero, EVM, bridge, and application-security
+engineers. Please focus on:
+
+- Solana OFT Adapter custody and escrow-account constraints;
+- `tvl_ld` accounting and the global supply invariant;
+- `withdraw_fee` principal protection and paused-state behavior;
+- LayerZero Endpoint, peer, DVN, ULN, Executor, and confirmation configuration;
+- local/shared-decimal conversion, dust, slippage, and six-decimal behavior;
+- `SanOFT` bridge-only pause and inbound/outbound rate-limit overrides;
+- resistance to arbitrary or unauthenticated minting;
+- replay, malformed-message, wrong-peer, and wrong-Endpoint handling;
+- Solana program upgrade authority and Store/delegate powers;
+- Safe and Squads governance assumptions and authority handoff;
+- deployment and wiring tooling, partial execution, and retry safety;
+- wrong-chain, wrong-RPC, wrong-EID, and testnet-identity protections;
+- missing, bypassed, or incorrectly targeted rate limits; and
+- end-to-end preservation of the global supply invariant.
+
+Start with:
+
+- [Responsible disclosure](./SECURITY.md)
+- [Auditor handoff](./docs/AUDITOR_HANDOFF.md)
+- [Exact audit scope](./docs/AUDIT_SCOPE.md)
+- [Production security review](./docs/PRODUCTION_SECURITY_REVIEW.md)
+
+Potentially exploitable vulnerabilities should be reported privately before
+public disclosure. Do not post live exploit instructions, private keys, seed
+phrases, personal data, or sensitive infrastructure details in a public issue.
+No bug bounty is promised unless a separate written program says otherwise.
+
+> **Publication gate:** the responsible-disclosure contact in `SECURITY.md` is
+> currently a clearly marked placeholder. This repository must remain private
+> until the project owner replaces it with a monitored contact.
+
+## Architecture
+
+```text
+Solana canonical SAN holder
+        │ outbound: lock SAN, increase tvl_ld
+        ▼
+LayerZero Solana OFT Adapter escrow
+        │ authenticated LayerZero message
+        ▼
+Robinhood SanOFT: mint only through authenticated credit
+
+Robinhood outbound: burn SanOFT
+        │ authenticated LayerZero message
+        ▼
+Solana inbound: decrease tvl_ld and release escrowed SAN
 ```
 
-</details>
+The proposed security stack uses explicit send/receive libraries, Executors,
+peers, enforced options, and any-two-of-three DVN verification. Defaults and the
+deprecated Dead DVN must not be inherited. Robinhood-source finality remains an
+unresolved launch decision; a count of fast L2 blocks must not be presented as
+Ethereum economic finality.
 
-<details>
-<summary>Install Anchor <code>0.31.1</code> </summary>
-<br>
+Four rate-limit controls are mandatory: Solana outbound/inbound and Robinhood
+outbound/inbound. Current unapplied planning profiles are 500,000 SAN for the
+canary, 30,000,000 SAN for early public operation, and 50,000,000 SAN for normal
+operation per direction and refill period. These are risk proposals, not live
+settings or launch authorization.
 
-```bash
-cargo install --git https://github.com/solana-foundation/anchor --tag v0.31.1 anchor-cli --locked
+## Testnet evidence
+
+The separate testnet deployment completed one forward and one return transfer:
+
+```text
+Solana Devnet tSAN lock
+    → Robinhood Testnet tSAN mint
+    → Robinhood Testnet tSAN burn
+    → Solana Devnet tSAN unlock
 ```
 
-</details>
+The handoff records both source transactions, LayerZero GUIDs, destination
+transactions, exactly-once delivery evidence, and the separation between tSAN
+and canonical SAN. Testnet deployment identities and configuration are not a
+production template.
 
-<br>
+See [Auditor handoff](./docs/AUDITOR_HANDOFF.md) and
+[testnet-to-production review](./docs/TESTNET_TO_PRODUCTION_REVIEW.md).
 
-> **SAN Phase 3.5 safety boundary:** only local builds/tests and read-only RPC inspection are approved. Do not execute any deployment, creation, wiring, authority, send, mint, burn, or live transaction command in this starter documentation. `.env.example` is non-secret configuration only.
+## Repository map
 
-## Build
+| Area                                       | Location                                                                                                                                                                                                                 |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Architecture and canonical custody model   | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)                                                                                                                                                                         |
+| Solana OFT Adapter program                 | [`programs/oft/`](./programs/oft/)                                                                                                                                                                                       |
+| Robinhood `SanOFT` contract                | [`contracts/SanOFT.sol`](./contracts/SanOFT.sol)                                                                                                                                                                         |
+| Production identity/configuration policies | [`scripts/`](./scripts/) and [`config/mainnet.ts`](./config/mainnet.ts)                                                                                                                                                  |
+| EVM and Solana runtime tests               | [`test/`](./test/)                                                                                                                                                                                                       |
+| Escrow invariant review                    | [`docs/ESCROW_SECURITY_REVIEW.md`](./docs/ESCROW_SECURITY_REVIEW.md)                                                                                                                                                     |
+| LayerZero security proposal                | [`docs/SECURITY_CONFIG.md`](./docs/SECURITY_CONFIG.md)                                                                                                                                                                   |
+| Rate-limit analysis                        | [`docs/PRODUCTION_RATE_LIMITS.md`](./docs/PRODUCTION_RATE_LIMITS.md)                                                                                                                                                     |
+| Governance and handoff                     | [`docs/PRODUCTION_GOVERNANCE.md`](./docs/PRODUCTION_GOVERNANCE.md), [`docs/AUTHORITY_HANDOFF.md`](./docs/AUTHORITY_HANDOFF.md)                                                                                           |
+| Future inert runbooks                      | [`docs/MAINNET_DEPLOYMENT_RUNBOOK.md`](./docs/MAINNET_DEPLOYMENT_RUNBOOK.md), [`docs/MAINNET_WIRING_RUNBOOK.md`](./docs/MAINNET_WIRING_RUNBOOK.md), [`docs/MAINNET_CANARY_RUNBOOK.md`](./docs/MAINNET_CANARY_RUNBOOK.md) |
+| Build and artifact evidence                | [`docs/PRODUCTION_VERIFIABLE_BUILD.md`](./docs/PRODUCTION_VERIFIABLE_BUILD.md), [`docs/PRODUCTION_EVM_ARTIFACT.md`](./docs/PRODUCTION_EVM_ARTIFACT.md)                                                                   |
 
-### SAN program identity
+Historical phase reports are retained as supporting evidence but are not the
+primary public navigation surface.
 
-SAN's approved local program ID is pinned in `Anchor.toml` and `programs/oft/src/lib.rs`. Verify source, IDL, ELF, and tracked-file safety after a build with:
+## Local validation
+
+Required toolchain: Node 22, pnpm, Rust/Cargo 1.84.1, Anchor 0.31.1,
+Agave/Solana 2.2.20, and Foundry.
 
 ```bash
+pnpm install --frozen-lockfile
+pnpm compile
+pnpm test
+pnpm test:anchor
+pnpm test:scripts
+pnpm lint
+pnpm exec tsc --noEmit
+forge test
 pnpm san:check-program-id
 ```
 
-Do not run `anchor keys sync` in this repository: it could replace the approved SAN identity. Ignored local keypairs under `target/deploy/` are test/build material only and are never approved operators.
-
-### Building the Solana OFT Program
-
-Ensure you have Docker running before running the build command.
-
-#### Build the Solana OFT program
-
-```bash
-anchor build -v -e OFT_ID=9myHzfqsbJfGbYxpCvVCYqLaB4Co1RCo2a8T4QSkTvcD
-```
-
-> :information_source: For a breakdown of expected rent-exempt costs before deployment, see https://docs.layerzero.network/v2/developers/solana/technical-reference/solana-guidance#previewing-solana-rent-costs.
-
-## Deploy
-
-:information_source: LayerZero's default deployment path for Solana OFTs require you to deploy your own OFT program as this means you own the Upgrade Authority and don't rely on LayerZero to manage that authority for you. Read [this](https://neodyme.io/en/blog/solana_upgrade_authority/) to understand more on why this is important.
-
-To deploy a Solana OFT, you need to both deploy an OFT Program and also create the OFT Store, alongside the other configuration steps that are handled by the provided tasks. To understand the relationship between the OFT Program and the OFT Store, read the section ['The OFT Program'](https://docs.layerzero.network/v2/developers/solana/oft/overview#the-oft-program) on the LayerZero docs.
-
-#### (Recommended) Deploying with a priority fee
-
-The `deploy` command will run with a priority fee. Read the section on ['Deploying Solana programs with a priority fee'](https://docs.layerzero.network/v2/developers/solana/technical-reference/solana-guidance#deploying-solana-programs-with-a-priority-fee) to learn more.
-
-#### Run the deploy command
-
-```bash
-solana program deploy --program-id target/deploy/oft-keypair.json target/verifiable/oft.so -u devnet --with-compute-unit-price <COMPUTE_UNIT_PRICE_IN_MICRO_LAMPORTS>
-```
-
-<details>
-
-:information_source: the `-u` flag specifies the RPC URL that should be used. The options are `mainnet-beta, devnet, testnet, localhost`, which also have their respective shorthands: `-um, -ud, -ut, -ul`
-
-:warning: If the deployment is slow, it could be that the network is congested and you might need to increase the priority fee.
-
-</details>
-
-### Create the Solana OFT
-
-```bash
-pnpm hardhat lz:oft:solana:create --eid 40168 --program-id <PROGRAM_ID> --only-oft-store true --amount 100000000000
-```
-
-The above command will create a Solana OFT which will have only the OFT Store as the Mint Authority and will also mint 100 OFT (given the default 9 decimals on Solana, this would be `100_000_000_000` in raw amount).
-
-> For an elaboration on the command params for this command to create an Solana OFT, refer to the section [Create Solana OFT](#create-solana-oft)
-
-### Deploy an Arbitrum Sepolia OFT peer
-
-```bash
-pnpm hardhat lz:deploy # follow the prompts
-```
-
-> The SAN production contract is `contracts/SanOFT.sol`. It contains no initial supply or arbitrary mint entry point. Do not add one for testing; tests use isolated mocks.
-
-## Enable Messaging
-
-Run the following command to initialize the SendConfig and ReceiveConfig Accounts. This step is unique to pathways that involve Solana.
-
-```bash
-npx hardhat lz:oft:solana:init-config --oapp-config layerzero.config.ts
-```
-
-<details>
-You only need to do this when initializing the OFT pathways the first time. If a new pathway is added later, run this again to initialize the new pathway.
-</details>
-<br>
-
-The OFT standard builds on top of the OApp standard, which enables generic message-passing between chains. After deploying the OFT on the respective chains, you enable messaging by running the [wiring](https://docs.layerzero.network/v2/concepts/glossary#wire--wiring) task.
-
-> :information_source: This example uses the [Simple Config Generator](https://docs.layerzero.network/v2/developers/evm/technical-reference/simple-config), which is recommended over manual configuration.
-
-Run the wiring task:
-
-```bash
-pnpm hardhat lz:oapp:wire --oapp-config layerzero.config.ts
-```
-
-## Sending OFTs
-
-Send From 1 OFT from **Solana Devnet** to **Arbitrum Sepolia**
-
-```bash
-npx hardhat lz:oft:send --src-eid 40168 --dst-eid 40231 --to <EVM_ADDRESS>  --amount 1
-```
-
-> :information_source: `40168` and `40231` are the Endpoint IDs of Solana Devnet and Arbitrum Sepolia respectively. View the list of chains and their Endpoint IDs on the [Deployed Endpoints](https://docs.layerzero.network/v2/deployments/deployed-contracts) page.
-
-Send 1 OFT From **Arbitrum Sepolia** to **Solana Devnet**
-
-```bash
-npx hardhat lz:oft:send --src-eid 40231 --dst-eid 40168 --to <SOLANA_ADDRESS>  --amount 1
-```
-
-Upon a successful send, the script will provide you with the link to the message on LayerZero Scan.
-
-Once the message is delivered, you will be able to click on the destination transaction hash to verify that the OFT was sent.
-
-Congratulations, you have now sent an OFT between Solana and Arbitrum!
-
-> If you run into any issues, refer to [Troubleshooting](#troubleshooting).
-
-## Next Steps
-
-After successfully deploying your OFT, consider the following steps:
-
-- Review the [Choosing between OFT, OFT Adapter and OFT Mint-and-Burn-Adapter](#choosing-between-oft-oft-adapter-and-mint-and-burn-adapter-oft) section
-- Review the [Production Deployment Checklist](#production-deployment-checklist) before going to mainnet
-- Learn about [Security Stack](https://docs.layerzero.network/v2/developers/evm/protocol-gas-settings/security-stack)
-- Understand [Message Execution Options](https://docs.layerzero.network/v2/developers/evm/protocol-gas-settings/options)
-- Wiring **Solana to Aptos** - for Wiring Solana to Aptos please refer to the instructions in [docs/wiring-to-aptos.md](./docs/wiring-to-aptos.md).
-
-## Choosing between OFT, OFT Adapter and Mint and Burn Adapter OFT
-
-This section explains the three different options available for creating OFTs on Solana and when to use each one.
-
-### Decision Tree
-
-<p align="center">
-<pre>
-              Do you have an existing Solana token (SPL or Token2022)?
-                                      │
-          ┌───────────────────────────┴───────────────────────────┐
-          │                                                       │
-         NO                                                     YES
-          │                                                       │
-  ✅ Use OFT (Preferred)                              Can you transfer the 
-  • Creates a new token                              Mint Authority to OFT 
-  • Uses burn and mint mechanism                     Store or new SPL Multisig?
-                                                              │
-                                                ┌────────────┴────────────┐
-                                                │                         │
-                                              YES                       NO/WON'T
-                                                │                         │
-                          ✅ Use OFT MABA (Mint-And-Burn Adapter)   ⚠️ Use OFT Adapter (Last Resort)
-                          • Uses existing token                    • Uses existing token
-                          • Transfers Mint Authority               • Keeps existing Mint Authority
-                            to OFT Store/Multisig                  • Uses lock and unlock mechanism
-                          • Uses burn and mint mechanism
-</pre>
-</p>
-
-### OFT
-
-- **Mechanism**: Burn and mint
-- **Token**: Create new as part of the [create task](#create-solana-oft)
-- **Note**: Preferred option when you don't have an existing token
-
-```bash
-pnpm hardhat lz:oft:solana:create --eid 40168 --program-id <PROGRAM_ID> --only-oft-store true --amount 100000000000
-```
-
-### OFT Adapter
-
-- **Mechanism**: Lock and unlock
-- **Token**: Use existing
-- **Note**: ⚠️ Last resort option when you can't or won't transfer Mint Authority of existing token
-
-```bash
-pnpm hardhat lz:oft-adapter:solana:create --eid 40168 --program-id <PROGRAM_ID> --mint <TOKEN_MINT> --token-program <TOKEN_PROGRAM_ID>
-```
-
-### OFT Mint-And-Burn Adapter (MABA)
-
-- **Mechanism**: Burn and mint
-- **Token**: Use existing
-- **Note**: ⚠️ Requires transferring Mint Authority to OFT Store or new SPL Multisig. Cannot use if Mint Authority has been renounced.
-
-```bash
-pnpm hardhat lz:oft:solana:create --eid 40168 --program-id <PROGRAM_ID> --mint <TOKEN_MINT> --token-program <TOKEN_PROGRAM_ID>
-```
-
-:warning: **Important for MABA**: Before attempting any cross-chain transfers, you must transfer the Mint Authority for `lz_receive` to work. If you used `--additional-minters`, transfer to the newly created multisig address. Otherwise, set it to the OFT Store address.
-
-## Production Deployment Checklist
-
-<!-- TODO: move to docs page, then just link -->
-
-Before deploying, ensure the following:
-
-- (required) verify `contracts/SanOFT.sol` still has no arbitrary mint entry point or initial supply
-- (recommended) you have profiled the gas usage of `lzReceive` on your destination chains
-
-<!-- TODO: mention https://docs.layerzero.network/v2/developers/evm/technical-reference/integration-checklist#set-security-and-executor-configurations after it has been updated to reference the CLI -->
-
-## Appendix
-
-### Running tests
-
-```bash
-pnpm test
-```
-
-### Adding other chains
-
-To add additional chains to your OFT deployment:
-
-1. If EVM, add the new chain configuration to your `hardhat.config.ts`
-2. Deploy the OFT contract on the new chain
-3. Update your `layerzero.config.ts` to include the new chain
-4. Run `init-config` for the new pathway (if it involves Solana)
-5. Run the wiring task
-
-### Using Multisigs
-
-For production deployments, consider using multisig wallets:
-
-- Solana: Use [Squads](https://squads.so/) multisig with the `--multisig-key` flag
-- EVM chains: Use Safe or similar multisig solutions
-
-If your Solana OFT's delegate/owner is a Squads multisig, you can simply append the `--multisig-key` flag to the end of tasks such as the `wire` task:
-
-```bash
-pnpm hardhat lz:oapp:wire --oapp-config layerzero.config.ts --multisig-key <SQUADS_MULTISIG_ACCOUNT>
-```
-
-### Set a new Mint Authority Multisig
-
-If you are not happy with the deployer being a mint authority, you can create and set a new mint authority by running:
-
-```bash
-pnpm hardhat lz:oft:solana:setauthority --eid <SOLANA_EID> --mint <TOKEN_MINT> --program-id <PROGRAM_ID> --escrow <ESCROW> --additional-minters <MINTERS_CSV>
-```
-
-The `OFTStore` is automatically added as a mint authority to the newly created mint authority, and does not need to be
-included in the `--additional-minters` list.
-
-### LayerZero Hardhat Helper Tasks
-
-This example includes various helper tasks. For a complete list, run:
-
-```bash
-npx hardhat --help
-```
-
-#### Create Solana OFT
-
-`lz:oft:solana:create`
-
-##### Required Parameters
-
-- **`--eid`** (EndpointId)  
-  Solana mainnet (30168) or testnet (40168)
-
-- **`--program-id`** (string)  
-  The OFT Program ID
-
-##### Optional Parameters
-
-- **`--amount`** (number)  
-  The initial supply to mint on Solana  
-  _Default: undefined_
-
-- **`--local-decimals`** (number)  
-  Token local decimals  
-  _Default: 9_
-
-- **`--shared-decimals`** (number)  
-  OFT shared decimals  
-  _Default: 6_
-
-- **`--name`** (string)  
-  Token Name  
-  _Default: "MockOFT"_
-
-- **`--symbol`** (string)  
-  Token Symbol  
-  _Default: "MOFT"_
-
-- **`--uri`** (string)  
-  URI for token metadata  
-  _Default: ""_
-
-- **`--seller-fee-basis-points`** (number)  
-  Seller fee basis points  
-  _Default: 0_
-
-- **`--token-metadata-is-mutable`** (boolean)  
-  Whether token metadata is mutable  
-  _Default: true_
-
-- **`--additional-minters`** (CSV string)  
-  Comma-separated list of additional minters  
-  _Default: undefined_
-
-- **`--only-oft-store`** (boolean)  
-  If you plan to have only the OFTStore and no additional minters. This is not reversible, and will result in losing the ability to mint new tokens by everything but the OFTStore.  
-  _Default: false_
-
-- **`--freeze-authority`** (string)  
-  The Freeze Authority address (only supported in onlyOftStore mode)  
-  _Default: ""_
-
-##### MABA-Only Parameters
-
-The following parameters are only used for Mint-And-Burn Adapter (MABA) mode:
-
-- **`--mint`** (string)  
-  The Token mint public key (used for MABA only)  
-  _Default: undefined_
-
-- **`--token-program`** (string)  
-  The Token Program public key (used for MABA only)  
-  _Default: TOKEN_PROGRAM_ID_
-
-#### Mint Authority Configuration
-
-:information_source: For **OFT**, the SPL token's Mint Authority is set to the **Mint Authority Multisig**, which always has the **OFT Store** as a signer. The multisig is fixed to needing 1 of N signatures.
-
-:information_source: You have the option to specify additional signers through the `--additional-minters` flag. If you choose not to, you must pass in `--only-oft-store true`, which means only the **OFT Store** will be a signer for the **Mint Authority Multisig**.
-
-:warning: If you choose to go with `--only-oft-store`, you will not be able to add in other signers/minters or update the Mint Authority, and the Freeze Authority will be immediately renounced. The token Mint Authority will be fixed Mint Authority Multisig address while the Freeze Authority will be set to None.
-
-##### Important Notes
-
-:warning: Use `--additional-minters` flag to add a CSV of additional minter addresses to the Mint Authority Multisig. If you do not want to, you must specify `--only-oft-store true`.
-
-<details>
-<summary> <a href="https://docs.layerzero.network/v2/developers/evm/create-lz-oapp/deploying"><code>pnpm hardhat lz:oft:solana:debug --eid <SOLANA_EID></code></a> </summary>
-
-<br>
-
-Fetches and prints info related to the Solana OFT.
-
-</details>
-
-### Note on the LZ Config file
-
-In [layerzero.config.ts](./layerzero.config.ts), the `solanaContract.address` is auto-populated with the `oftStore` address from the deployment file, which has the default path of `deployments/solana-<mainnet/testnet>`.
-
-```typescript
-const solanaContract: OmniPointHardhat = {
-  eid: EndpointId.SOLANA_V2_TESTNET,
-  address: getOftStoreAddress(EndpointId.SOLANA_V2_TESTNET),
-};
-```
-
-:warning: Ensure that you `address` is specified only for the solana contract object. Do not specify addresses for the EVM chain contract objects. Under the hood, we use `hardhat-deploy` to retrieve the contract addresses of the deployed EVM chain contracts. You will run into an error if you specify `address` for an EVM chain contract object.
-
-### Mint OFT on Solana
-
-<!-- TODO: move this into docs and just link to there -->
-
-This is only relevant for **OFT**. If you opted to include the `--amount` flag in the create step, that means you already have minted some Solana OFT and you can skip this section.
-
-:information_source: This is only possible if you specified your deployer address as part of the `--additional-minters` flag when creating the Solana OFT. If you had chosen `--only-oft-store true`, you will not be able to mint your OFT on Solana.
-
-First, you need to create the Associated Token Account for your address.
-
-```bash
-spl-token create-account <TOKEN_MINT>
-```
-
-Then, you can mint. Note that the `spl-token` CLI expects the human-readable token amount and not the raw integer value for the `<AMOUNT>` param. This means, to mint 1 OFT, you would specify `1` as the amount. The `spl-token` handles the multiplication by `10^decimals` for you.
-
-```bash
-spl-token mint <TOKEN_MINT> <AMOUNT> --multisig-signer ~/.config/solana/id.json --owner <MINT_AUTHORITY>
-```
-
-:information_source: `~/.config/solana/id.json` assumes that you will use the keypair in the default location. To verify if this path applies to you, run `solana config get` and not the keypair path value.
-
-:information_source: You can get the `<MINT_AUTHORITY>` address from [deployments/solana-testnet/OFT.json](deployments/solana-testnet/OFT.json).
-
-### Solana Program Verification
-
-Refer to [Verify the OFT Program](https://docs.layerzero.network/v2/developers/solana/oft/overview#optional-verify-the-oft-program).
-
-### Troubleshooting
-
-Refer to the [Solana Troubleshooting page on the LayerZero Docs](https://docs.layerzero.network/v2/developers/solana/troubleshooting/common-errors) to see how to solve common error when deploying Solana OFTs.
+These commands build and test locally. They do not authorize deployment,
+wiring, token movement, or any other blockchain transaction. Transaction-
+capable mainnet task paths are structurally disabled in this revision.
+
+The production-code audit candidate is commit
+`f5e0c819f85db394e719f3948c1c101b94a3c37c`. Any production-code change after
+that commit requires independent change review.
+
+## Current blockers
+
+Before Phase 5B, the project still requires at least:
+
+- a reproducible, digest-pinned Docker/verifiable Solana build;
+- independent review of the exact production commit and artifacts;
+- an approved Robinhood finality/confirmation policy;
+- fresh LayerZero metadata and DVN/Executor review;
+- final Squads/Safe identities, signer separation, and recovery policy;
+- fresh market/liquidity review of rate limits;
+- a monitored responsible-disclosure contact; and
+- a separate explicit authorization for every production transaction.
+
+See [Phase 5A.1 blockers](./docs/PHASE_5A1_BLOCKERS.md). No repository content
+should be interpreted as permission to proceed to mainnet.

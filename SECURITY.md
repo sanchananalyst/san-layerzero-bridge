@@ -2,9 +2,10 @@
 
 ## Reporting a vulnerability
 
-Report suspected vulnerabilities privately to **SECURITY CONTACT PLACEHOLDER**.
-The project owner must replace this placeholder with a monitored address before
-the repository is made public.
+Report suspected vulnerabilities privately to **SECURITY CONTACT PLACEHOLDER —
+REQUIRED BEFORE PUBLICATION**. The project owner must replace this placeholder
+with a monitored address before the repository is made public. Until then, the
+GitHub repository must remain private.
 
 Include, where possible:
 
@@ -15,8 +16,9 @@ Include, where possible:
 - a safe remediation or containment idea, if known.
 
 Do not include private keys, seed phrases, personal data, or live exploitation
-against public networks. Please allow maintainers a reasonable opportunity to
-investigate and patch before publicly disclosing an unpatched critical issue.
+against public networks. Potentially exploitable critical vulnerabilities must
+be reported privately before public disclosure. Please allow maintainers a
+reasonable opportunity to investigate and patch an unpatched critical issue.
 There is no promised bounty unless a separate written program explicitly says
 otherwise.
 
