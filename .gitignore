@@ -27,3 +27,6 @@ pnpm-error.log
 .DS_Store
 .idea
 *-keypair.json
+
+# Private local phase reports (never commit or publish)
+/docs/PHASE_*_REPORT.md

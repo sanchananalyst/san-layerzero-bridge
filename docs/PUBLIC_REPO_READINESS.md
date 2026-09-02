@@ -6,8 +6,9 @@ A scrubbed GitHub copy now exists at
 <https://github.com/sanchananalyst/san-layerzero-bridge> and has been verified
 through an authenticated fresh clone. It remains **PRIVATE**. The responsible-
 disclosure contact placeholder is unresolved, so the fail-closed publication
-gate prohibits switching the repository to public visibility. See
-`docs/PHASE_5A2_PUBLICATION_REPORT.md`.
+gate prohibits switching the repository to public visibility. Private phase
+reports are excluded from every branch and tag and retained only as ignored
+local files.
 
 ## Phase 5A.1 baseline
 

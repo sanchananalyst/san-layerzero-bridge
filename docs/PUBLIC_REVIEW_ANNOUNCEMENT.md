@@ -46,7 +46,7 @@ EVM pause/rate-limit hooks, arbitrary-mint resistance, four-direction limiter
 coverage, upgrade/governance authorities, and fail-closed deployment tooling.
 
 Audit candidate:
-`f5e0c819f85db394e719f3948c1c101b94a3c37c`
+`a53a86bcc0a18934a19f2889ba61ceb1633fa359`
 
 Review package: <https://github.com/sanchananalyst/san-layerzero-bridge>
 

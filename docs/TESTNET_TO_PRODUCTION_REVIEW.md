@@ -3,9 +3,9 @@
 ## Scope and method
 
 Phase 5A compared `production/phase5a` at
-`a5aae4d024d818761cc4bbb40308ba29dbf1cfa0` with `testnet/phase4a` at
-`759e57fd41f386099dcd116d21ae945bdff3fd5a`. Both branches descend from
-`280c165be2328d1eb20d1d0926c6cff579ab795a`. The testnet branch was not merged.
+`22a75eb361dca07eb9c1f1aea59b1d3232033b92` with `testnet/phase4a` at
+`b54813be4b6bd051b5bb1c88edec3d6143463b1e`. Both branches descend from
+`535f0b306e6666f39ca43f151e9462b404af0050`. The testnet branch was not merged.
 
 Classification:
 

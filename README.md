@@ -176,7 +176,7 @@ wiring, token movement, or any other blockchain transaction. Transaction-
 capable mainnet task paths are structurally disabled in this revision.
 
 The production-code audit candidate is commit
-`f5e0c819f85db394e719f3948c1c101b94a3c37c`. Any production-code change after
+`a53a86bcc0a18934a19f2889ba61ceb1633fa359`. Any production-code change after
 that commit requires independent change review.
 
 ## Current blockers

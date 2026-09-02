@@ -3,7 +3,7 @@
 ## Audit target and status
 
 Production code commit:
-`f5e0c819f85db394e719f3948c1c101b94a3c37c`.
+`a53a86bcc0a18934a19f2889ba61ceb1633fa359`.
 Phase 5A.1 is pre-mainnet. No production program, contract, Store, escrow, peer,
 security configuration, multisig, or liquidity exists. This package does not
 authorize Phase 5B.
@@ -96,8 +96,8 @@ tSAN/testnet identities are prohibited in production.
 Initial HIGH tooling findings—private-key export, registered mutation paths, and
 generic mainnet wiring—were remediated at the audit commit. The Codex Security
 scan `26e024e8-031d-4d62-9b0d-e07a0f07437c` sealed with zero remaining
-reportable findings; its workbench target began at `0962a9d…`, so the exact
-remediation commit still requires independent change review.
+reportable findings; its workbench target began before the remediation commit,
+so the exact audit candidate still requires independent change review.
 
 Accepted design risks: multisig governance can maliciously upgrade/reconfigure;
 Solana buckets measure net imbalance through cross-refill rather than strict

@@ -3,9 +3,9 @@
 ## Immutable code boundary
 
 Audit production code commit
-`f5e0c819f85db394e719f3948c1c101b94a3c37c`. The following reporting commit
-contains handoff/report documents only; any later production-code change creates
-a new audit boundary and requires change review.
+`a53a86bcc0a18934a19f2889ba61ceb1633fa359`. Later commits contain handoff and
+publication documents only; any later production-code change creates a new audit
+boundary and requires change review.
 
 ## Production source and dependency boundary
 
