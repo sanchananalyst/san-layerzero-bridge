@@ -56,7 +56,16 @@ This ID is only a local deployment identity until the program is deployed in an 
 
 ## Why SAN has its own program
 
-The repository builds an unmodified copy of LayerZero's official `oft-solana` program source pinned by this workspace. SAN does not select a shared third-party OFT program. Its own program identity gives the SAN governance process control over upgrade policy, bytecode verification, and emergency response while retaining LayerZero's standard Adapter implementation.
+The repository builds LayerZero's official `oft-solana` program source pinned by
+this workspace with one documented SAN activation-boundary change: a new OFT
+Store initializes with `paused = true` instead of `false`. Account layout,
+instruction arguments, Adapter custody, debit/credit, Endpoint/peer
+authentication, and rate-limit logic remain unchanged. The exact delta and its
+compatibility impact are recorded in `PARTIAL_CONFIGURATION_SECURITY.md` and
+must be included in independent source and reproducible-bytecode review. SAN
+does not select a shared third-party OFT program. Its own program identity gives
+the SAN governance process control over upgrade policy, bytecode verification,
+and emergency response while retaining LayerZero's standard Adapter behavior.
 
 The program supports both native mint/burn OFTs and existing-token adapters. SAN must initialize only `OFTType::Adapter`. In that mode it:
 

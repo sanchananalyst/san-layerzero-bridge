@@ -53,6 +53,7 @@ contract SanOFTTest is TestHelperOz5 {
 
         solanaPeer.setPeer(2, addressToBytes32(address(sanOFT)));
         sanOFT.setPeer(1, addressToBytes32(address(solanaPeer)));
+        sanOFT.unpause();
     }
 
     function test_constructorConfiguration() public view {
@@ -74,6 +75,20 @@ contract SanOFTTest is TestHelperOz5 {
         assertEq(inAvailable, CANARY_CAPACITY);
         assertEq(inRefill, CANARY_CAPACITY);
         assertEq(inDuration, DAY);
+        assertFalse(sanOFT.paused());
+    }
+
+    function test_freshDeploymentStartsPaused() public {
+        SanOFT fresh = SanOFT(
+            _deployOApp(type(SanOFT).creationCode, abi.encode("Fresh SAN", "SAN", address(endpoints[2]), address(this)))
+        );
+        assertTrue(fresh.paused());
+
+        SendParam memory params = _sendParam(1, user, UNIT);
+        vm.expectRevert();
+        fresh.quoteOFT(params);
+        vm.expectRevert();
+        fresh.quoteSend(params, false);
     }
 
     function test_oneBaseUnitAndNoDust() public view {

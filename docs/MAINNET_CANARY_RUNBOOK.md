@@ -17,38 +17,62 @@ approval or movement, no unpause, and no LayerZero message.
 - Escrow/TVL and remote supply are zero; both sides are paused.
 - Monitoring, incident communications, manual delivery, and retry procedures are
   staffed.
-- A later committed phase approves an exact direction, receiver, raw amount,
-  maximum fee, signer set, and exactly one OFT message.
+- A later committed phase approves the public activation boundary, exact
+  operator-observation transfer direction, receiver, raw amount, maximum fee,
+  signer set, and total public loss budget enforced by all four rate limits.
 
-## Future one-message procedure
+## Future initial public canary procedure
+
+This procedure does not create an exclusive one-message lane. OFT send is
+permissionless: after the final Solana unpause, any holder can race or accompany
+the operator's observation transfer. If an exclusive canary is required, Phase
+5B remains blocked until a separately audited atomic authorization mechanism
+exists. The procedure below instead defines a bounded public activation window.
 
 1. Record the clean checkpoint, tool versions, configuration hashes, and approved
    transaction manifest.
 2. Re-verify canonical SAN and every production identity read-only.
-3. Verify the recipient and whether its canonical SAN ATA exists. If absent,
+3. Run the production checker with expected state `PRE_ACTIVATION_INERT`; require
+   both applications paused and every other check passing before building either
+   activation proposal.
+4. Verify the recipient and whether its canonical SAN ATA exists. If absent,
    attach the freshly queried rent through per-transaction extra options.
-4. Read all rate buckets and require canary capacity without changing them.
-5. Quote the exact approved raw amount and minimum. Require zero dust, no
+5. Read all rate buckets and require canary capacity without changing them.
+6. Prepare the exact approved raw amount and minimum. Do not obtain a live quote
+   while paused; require zero dust, no
    unexpected OFT fee, and the approved maximum native fee.
-6. Print a public summary and independently confirm chain ID/EID, signer,
+7. Print a public summary and independently confirm chain ID/EID, signer,
    receiver bytes, amount, minimum, options, and refund address.
-7. Create an exclusive durable send-attempt marker before signing.
-8. Unpause only the source operation required by the approved design, using the
-   exact governance transaction authorized for the canary.
-9. Submit exactly one OFT send. Record its source transaction and GUID. No second
-   or replacement send is permitted under any status.
-10. Re-pause as soon as the packet is confirmed outbound if the approved pause
-    semantics do not interfere with delivery; otherwise follow the pre-reviewed
-    destination retry design.
-11. Monitor only that GUID. Pending means wait; blocked or failed means inspect
-    and stop—never reconfigure or resend automatically.
-12. On delivery, reconcile sender, escrow, `tvl_ld`, destination balance,
+8. Verify the hashed in-flight inventory is empty and Store TVL, escrow balance,
+   and Robinhood supply are all zero. `CANARY_ACTIVE` is forbidden for any
+   reactivation with nonzero settled or in-flight state.
+9. Unpause Robinhood first. Immediately read back Robinhood unpaused, Solana
+   paused, zero Robinhood supply, and zero in-flight messages. No Robinhood
+   holder can send because supply is zero, while canonical SAN remains blocked
+   by the Solana pause. If the action or readback is interrupted or ambiguous,
+   re-pause Robinhood and stop.
+10. Unpause Solana last. This exact transaction is the public activation
+    boundary. Ordinary sends are now permitted under the canary limits.
+11. Run two complete `CANARY_ACTIVE` observations. They must agree and retain
+    the initial zero state. If public activity has already changed accounting,
+    stop the operator observation transfer and monitor/reconcile that activity.
+12. If the later phase still authorizes it and the zero state remains, quote and
+    submit the operator's exact observation transfer. Record its source
+    transaction and GUID. Never resend an ambiguous attempt.
+13. Monitor every GUID observed during the public window. Pending means wait;
+    blocked or failed means inspect and stop—never weaken configuration or
+    resend automatically.
+14. After delivery, re-pause both applications through separately verified
+    governance actions and require `PRE_ACTIVATION_INERT` with the now-approved
+    settled balances.
+15. Reconcile sender, escrow, `tvl_ld`, destination balance,
     destination supply, rate buckets, fees, events, nonce, replay state, and
     global supply.
-13. Prove exactly one source send, one GUID, one destination receive, and the exact
-    approved amount.
-14. Run the complete configuration checker again and publish a public record.
-15. STOP. A return transfer or public launch requires another committed phase.
+16. Account for every source send, GUID, destination receive, and exact amount;
+    do not claim exclusivity from the operator's intent.
+17. Publish the checker output and a public record.
+18. STOP. A return transfer or larger public limit requires another committed
+    phase.
 
 ## Amount and direction
 

@@ -1,15 +1,22 @@
+import { PublicKey } from '@solana/web3.js'
+
 export interface UlnObservation {
     confirmations: bigint
     requiredDvns: string[]
     optionalDvns: string[]
     optionalThreshold: number
     explicitNoRequired: boolean
+    explicitConfirmations: boolean
+    explicitOptionalDvns: boolean
 }
 
 export interface ChainObservation {
     sendLibrary: string
     receiveLibrary: string
     executor: string
+    sendLibraryExplicit: boolean
+    receiveLibraryExplicit: boolean
+    executorExplicit: boolean
     peer: string
     send: UlnObservation
     receive: UlnObservation
@@ -97,6 +104,10 @@ const validateUln = (
     chain: 'solana' | 'robinhood'
 ): void => {
     if (!observation.explicitNoRequired) throw new Error(`${label} does not explicitly override required DVNs to NONE`)
+    if (!observation.explicitConfirmations)
+        throw new Error(`${label} confirmations are inherited from Endpoint defaults`)
+    if (!observation.explicitOptionalDvns)
+        throw new Error(`${label} optional DVNs are inherited from Endpoint defaults`)
     if (observation.requiredDvns.length !== 0) throw new Error(`${label} required DVN count is not zero`)
     if (observation.optionalThreshold !== bridgePolicy.optionalThreshold) {
         throw new Error(`${label} optional threshold differs`)
@@ -140,6 +151,10 @@ export const validateLayerZeroObservation = (
         assertChainAddressEqual(observed.sendLibrary, intended.sendLibrary, `${chain} send library`, chain)
         assertChainAddressEqual(observed.receiveLibrary, intended.receiveLibrary, `${chain} receive library`, chain)
         assertChainAddressEqual(observed.executor, intended.executor, `${chain} Executor`, chain)
+        if (!observed.sendLibraryExplicit) throw new Error(`${chain} send library is inherited from Endpoint defaults`)
+        if (!observed.receiveLibraryExplicit)
+            throw new Error(`${chain} receive library is inherited from Endpoint defaults`)
+        if (!observed.executorExplicit) throw new Error(`${chain} Executor is inherited from message-library defaults`)
         assertBytes32Equal(observed.peer, expectedPeers[chain], `${chain} peer`)
         const sendConfirmations =
             chain === 'solana' ? policy.solanaSourceConfirmations : policy.robinhoodSourceConfirmations
@@ -149,4 +164,3 @@ export const validateLayerZeroObservation = (
         validateUln(`${chain} receive`, observed.receive, intended, deprecated, policy, receiveConfirmations, chain)
     }
 }
-import { PublicKey } from '@solana/web3.js'

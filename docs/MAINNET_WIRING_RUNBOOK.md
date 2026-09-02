@@ -78,12 +78,16 @@ zero.
    matrix. Require chain/EID/signer/target/calldata allowlists.
 5. Execute at most one administrative transaction, then stop and read it back.
 6. Repeat step 5 only after the prior receipt and state are final and approved.
-7. Run a complete read-only checker from two RPC providers.
+   The default pause is the safety boundary; configure limiters before peers as
+   additional defense in depth where the transaction tooling permits it.
+7. Run `pnpm san:check-production` from two RPC providers with expected state
+   `PRE_ACTIVATION_INERT` and independently approved build, governance, finality,
+   and in-flight inventory inputs.
 8. Require no inherited default, no Dead DVN, exact any-2-of-3 semantics, matching
    send/receive confirmations, exact peers, exact Executors/options/rate limits,
    and unchanged governance.
-9. Verify escrow, `tvl_ld`, and Robinhood supply remain zero and Robinhood remains
-   paused.
+9. Verify escrow, `tvl_ld`, Robinhood supply, and both in-flight directions remain
+   zero and both applications remain paused.
 10. Publish the wiring record and STOP.
 
 ## Mandatory stop

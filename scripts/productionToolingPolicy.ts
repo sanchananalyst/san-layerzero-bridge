@@ -12,7 +12,7 @@ export const FUTURE_MAINNET_EXECUTION_PHASE = 'PHASE_5B_EXPLICITLY_AUTHORIZED'
 
 export function requireFutureMainnetExecution(_value: string | undefined): void {
     throw new Error(
-        'Mainnet transaction execution is structurally disabled in the Phase 5A.1 revision; a separately reviewed Phase 5B change is required'
+        'Mainnet transaction execution is structurally disabled in the Phase 5A revision; a separately reviewed Phase 5B change is required'
     )
 }
 

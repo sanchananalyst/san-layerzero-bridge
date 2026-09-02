@@ -74,6 +74,7 @@ describe('SanOFT emergency controls', function () {
         await robinhoodEndpoint.setDestLzEndpoint(solanaPeer.address, solanaEndpoint.address)
         await solanaPeer.connect(owner).setPeer(robinhoodEid, toBytes32(sanOFT.address))
         await sanOFT.connect(owner).setPeer(solanaEid, toBytes32(solanaPeer.address))
+        await sanOFT.connect(owner).unpause()
     })
 
     it('initializes exact six-decimal canary buckets', async function () {

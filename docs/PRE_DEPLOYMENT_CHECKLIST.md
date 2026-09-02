@@ -14,7 +14,7 @@ Every item requires recorded evidence and human approval. Phase 3.6 does not aut
 - [ ] Program source, dependency revisions, declared ID, reproducible bytecode, and deployed bytecode verified
 - [ ] Docker-verifiable `oft.so` produced on a healthy Docker host; Phase 5A.1 Docker client is present but the daemon is unavailable
 - [ ] Docker ELF SHA-256, `solana-verify` executable hash, and program-ID embedding recorded and independently reproduced
-- [x] Current Phase 5A.1 non-Docker ELF recorded: SHA-256 `1bb1093d63402e680d5d52fb3cb7cff44a0ada7b9e5835e35d44eca07b79a395`; local `solana-verify` executable hash `955f6b81689a285cd7fe9875d7575347d9766149698b306f3b74e00e0f4bdf45`
+- [ ] Patched Phase 5A.2 ELF and executable hashes recorded and independently reproduced; the Phase 5A.1 hashes are superseded
 - [ ] Program upgrade authority and governance policy known
 - [ ] OFT Store PDA independently derived and verified
 - [ ] Escrow address independently derived/recorded and canonical SAN mint verified
@@ -25,6 +25,7 @@ Every item requires recorded evidence and human approval. Phase 3.6 does not aut
 - [ ] Program upgrade-authority handoff planned and proposal calldata reviewed
 - [ ] Native pauser/unpauser assignments approved
 - [ ] Native inbound/outbound rate-limit values approved from a maximum-loss budget
+- [x] New OFT Stores initialize paused; partial peer/options/limiter states are covered by local runtime regression tests
 
 ## Robinhood
 
@@ -37,6 +38,7 @@ Every item requires recorded evidence and human approval. Phase 3.6 does not aut
 - [ ] SanOFT owner Safe selected; owners, threshold, modules, guards, and fallback handler reviewed
 - [ ] LayerZero delegate Safe selected and matches the approved Safe
 - [x] EVM bridge-only pause and independent inbound/outbound canary rate-limit implementation tested locally
+- [x] New SanOFT deployments initialize paused and partial configuration remains inert until explicit unpause
 - [ ] EVM emergency settings, Safe policy, monitoring, and deployment bytecode independently reviewed
 
 ## LayerZero
@@ -61,10 +63,10 @@ Every item requires recorded evidence and human approval. Phase 3.6 does not aut
 - [x] Escrow invariant runtime tests passing locally (8/8)
 - [x] Unauthorized, wrong-peer, malformed/replayed, and over-TVL receives fail in local runtime tests
 - [ ] `withdraw_fee` source and runtime behavior independently reviewed
-- [x] Full Hardhat compile/tests passing on pinned Node `22.23.2` (21/21)
-- [x] Full Foundry build/tests passing on the pinned toolchain (16/16)
+- [x] Full Hardhat compile/tests passing on pinned Node `22.23.2` (23/23)
+- [x] Full Foundry build/tests passing on the pinned toolchain (17/17)
 - [x] Full Anchor build/tests passing with local-validator integration coverage (8/8)
-- [x] TypeScript, ESLint, Prettier, and Solhint checks passing (19 non-blocking lint warnings, zero errors)
+- [x] TypeScript, ESLint, Prettier, and Solhint checks passing (20 non-blocking lint warnings, zero errors)
 - [x] No `*-keypair.json`, mnemonic, private key, or production secret tracked or staged
 - [x] Tracked starter `junk-id.json` removed; local runtime wallet is ignored and test-only
 - [ ] No deployer retains OFT Store admin
@@ -74,6 +76,7 @@ Every item requires recorded evidence and human approval. Phase 3.6 does not aut
 - [ ] No deployer retains Robinhood Endpoint delegate
 - [ ] Multisig/Safe governance drills and signer recovery completed
 - [ ] Monitoring covers escrow, TVL, remote supply, peers, libraries, DVNs, Executors, authorities, pause/rate limits, and upgrades
+- [x] Production policy checker has explicit `PRE_ACTIVATION_INERT` and initial-zero-state `CANARY_ACTIVE` states and rejects mixed state, deployer-held roles, missing/implicit LayerZero controls, wrong Adapter/mint/bytecode/escrow state, and accounting mismatches
 - [ ] Tiny mainnet canary amount and loss limit explicitly approved
 - [ ] Rollback, pause, retry, incident communications, and emergency governance procedure documented and rehearsed
 - [ ] Independent smart-contract/Solana/security review complete

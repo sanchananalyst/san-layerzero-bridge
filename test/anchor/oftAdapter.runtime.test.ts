@@ -9,7 +9,7 @@ import {
     getMint,
     mintTo,
 } from '@solana/spl-token'
-import { Keypair, PublicKey, SystemProgram } from '@solana/web3.js'
+import { Keypair, PublicKey, SystemProgram, Transaction } from '@solana/web3.js'
 
 import endpointIdl from '../../target/idl/endpoint.json'
 import oftIdl from '../../target/idl/oft.json'
@@ -23,6 +23,7 @@ const PEER_SEED = Buffer.from('Peer')
 const RECEIVE_TYPES_SEED = Buffer.from('LzReceiveTypes')
 const OAPP_SEED = Buffer.from('OApp')
 const AUTHORIZED_MESSAGE_SEED = Buffer.from('AuthorizedMessage')
+const PACKET_COUNTER_SEED = Buffer.from('PacketCounter')
 const EVENT_SEED = Buffer.from('__event_authority')
 
 type ProgramWithAccounts = anchor.Program & {
@@ -66,6 +67,10 @@ describe('OFT Adapter custody runtime', () => {
         OFT_PROGRAM_ID
     )
     const [oappRegistry] = PublicKey.findProgramAddressSync([OAPP_SEED, oftStore.toBuffer()], ENDPOINT_MOCK_ID)
+    const [packetCounter] = PublicKey.findProgramAddressSync(
+        [PACKET_COUNTER_SEED, oftStore.toBuffer()],
+        ENDPOINT_MOCK_ID
+    )
     const [endpointEventAuthority] = PublicKey.findProgramAddressSync([EVENT_SEED], ENDPOINT_MOCK_ID)
     const [oftEventAuthority] = PublicKey.findProgramAddressSync([EVENT_SEED], OFT_PROGRAM_ID)
 
@@ -96,13 +101,13 @@ describe('OFT Adapter custody runtime', () => {
         { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
         { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
         { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-        { pubkey: payer.publicKey, isSigner: false, isWritable: true },
+        { pubkey: packetCounter, isSigner: false, isWritable: true },
         { pubkey: endpointEventAuthority, isSigner: false, isWritable: false },
         { pubkey: ENDPOINT_MOCK_ID, isSigner: false, isWritable: false },
     ]
 
-    const send = async (amount: bigint, signer = payer, source = holderToken): Promise<void> => {
-        await oft.methods
+    const send = async (amount: bigint, signer = payer, source = holderToken): Promise<string> => {
+        const signature = await oft.methods
             .send({
                 dstEid: REMOTE_EID,
                 to: recipient.publicKey.toBytes(),
@@ -127,6 +132,79 @@ describe('OFT Adapter custody runtime', () => {
             .remainingAccounts(sendRemainingAccounts())
             .signers(signer === payer ? [] : [signer])
             .rpc()
+        await assertInvariant()
+        return signature
+    }
+
+    const setMockConfig = async (params: {
+        sendLibraryConfigured: boolean
+        receiveLibraryConfigured: boolean
+        sendUlnConfigured: boolean
+        receiveUlnConfigured: boolean
+        executorConfigured: boolean
+    }): Promise<void> => {
+        await endpoint.methods
+            .setMockConfig(params)
+            .accountsStrict({
+                authority: payer.publicKey,
+                oappRegistry,
+                oapp: oftStore,
+            })
+            .rpc()
+    }
+
+    const quoteOft = async (amount: bigint): Promise<unknown> =>
+        oft.methods
+            .quoteOft({
+                dstEid: REMOTE_EID,
+                to: recipient.publicKey.toBytes(),
+                amountLd: bn(amount),
+                minAmountLd: bn(amount),
+                options: Buffer.alloc(0),
+                composeMsg: null,
+                payInLzToken: false,
+            })
+            .accountsStrict({ oftStore, peer, tokenMint: mint })
+            .view()
+
+    const quoteSend = async (amount: bigint): Promise<unknown> =>
+        oft.methods
+            .quoteSend({
+                dstEid: REMOTE_EID,
+                to: recipient.publicKey.toBytes(),
+                amountLd: bn(amount),
+                minAmountLd: bn(amount),
+                options: Buffer.alloc(0),
+                composeMsg: null,
+                payInLzToken: false,
+            })
+            .accountsStrict({ oftStore, peer, tokenMint: mint })
+            .remainingAccounts([
+                { pubkey: ENDPOINT_MOCK_ID, isSigner: false, isWritable: false },
+                ...Array.from({ length: 6 }, () => ({
+                    pubkey: SystemProgram.programId,
+                    isSigner: false,
+                    isWritable: false,
+                })),
+            ])
+            .view()
+
+    const assertPartialStateInert = async (): Promise<void> => {
+        const holderBefore = (await getAccount(provider.connection, holderToken)).amount
+        const escrowBefore = (await getAccount(provider.connection, escrow.publicKey)).amount
+        const storeBefore = await oft.account.oftStore.fetch(oftStore)
+        const packetsBefore = await endpoint.account.packetCounter.fetch(packetCounter)
+
+        await expectRejected(() => quoteOft(1n))
+        await expectRejected(() => quoteSend(1n))
+        await expectRejected(() => send(1n))
+
+        expect((await getAccount(provider.connection, holderToken)).amount).toBe(holderBefore)
+        expect((await getAccount(provider.connection, escrow.publicKey)).amount).toBe(escrowBefore)
+        expect((await oft.account.oftStore.fetch(oftStore)).tvlLd.toString()).toBe(storeBefore.tvlLd.toString())
+        expect((await endpoint.account.packetCounter.fetch(packetCounter)).count.toString()).toBe(
+            packetsBefore.count.toString()
+        )
         await assertInvariant()
     }
 
@@ -214,7 +292,7 @@ describe('OFT Adapter custody runtime', () => {
         await mintTo(provider.connection, payer, mint, holderToken, payer, HOLDER_START)
     })
 
-    it('initializes Adapter custody without changing mint authorities', async () => {
+    it('initializes safely and keeps partial states A-F inert until explicit activation', async () => {
         const before = await getMint(provider.connection, mint)
         const [endpointEvent] = PublicKey.findProgramAddressSync([EVENT_SEED], ENDPOINT_MOCK_ID)
         await oft.methods
@@ -252,16 +330,114 @@ describe('OFT Adapter custody runtime', () => {
         expect(store.tokenMint.equals(mint)).toBe(true)
         expect(store.tokenEscrow.equals(escrow.publicKey)).toBe(true)
         expect(store.tvlLd.toString()).toBe('0')
+        expect(store.paused).toBe(true)
+        const initialEndpointState = await endpoint.account.oAppRegistry.fetch(oappRegistry)
+        expect(initialEndpointState.sendLibraryConfigured).toBe(false)
+        await endpoint.methods
+            .initMockPacketCounter()
+            .accountsStrict({
+                authority: payer.publicKey,
+                oappRegistry,
+                oapp: oftStore,
+                packetCounter,
+                systemProgram: SystemProgram.programId,
+            })
+            .rpc()
         expect(after.mintAuthority?.equals(before.mintAuthority!)).toBe(true)
         expect(after.freezeAuthority?.equals(before.freezeAuthority!)).toBe(true)
         await assertInvariant()
 
+        // A: account initialized, but no peer exists.
+        await assertPartialStateInert()
+
+        // B: the formerly exploitable peer-only state remains inert.
         await setPeerConfig({ peerAddress: [peerAddress] })
+        await assertPartialStateInert()
+
+        // A valid first instruction followed by an unauthorized admin update
+        // must roll the entire administrative batch back and preserve pause.
+        const beforeFailedBatch = await oft.account.peerConfig.fetch(peer)
+        const validInstruction = await oft.methods
+            .setPeerConfig({ remoteEid: REMOTE_EID, config: { feeBps: [1] } })
+            .accountsStrict({ admin: payer.publicKey, peer, oftStore, systemProgram: SystemProgram.programId })
+            .instruction()
+        const unauthorizedInstruction = await oft.methods
+            .setPeerConfig({ remoteEid: REMOTE_EID, config: { feeBps: [2] } })
+            .accountsStrict({ admin: attacker.publicKey, peer, oftStore, systemProgram: SystemProgram.programId })
+            .instruction()
+        await expectRejected(() =>
+            provider.sendAndConfirm(new Transaction().add(validInstruction, unauthorizedInstruction), [attacker])
+        )
+        const afterFailedBatch = await oft.account.peerConfig.fetch(peer)
+        expect(afterFailedBatch.feeBps).toBe(beforeFailedBatch.feeBps)
+        expect((await oft.account.oftStore.fetch(oftStore)).paused).toBe(true)
+
+        // C: configure both Endpoint libraries in actual mock state.
+        await setMockConfig({
+            sendLibraryConfigured: true,
+            receiveLibraryConfigured: true,
+            sendUlnConfigured: false,
+            receiveUlnConfigured: false,
+            executorConfigured: false,
+        })
+        await assertPartialStateInert()
+
+        // D: configure both ULN/DVN directions and Executor in actual mock
+        // state, then configure enforced options on the real OFT peer.
+        await setMockConfig({
+            sendLibraryConfigured: true,
+            receiveLibraryConfigured: true,
+            sendUlnConfigured: true,
+            receiveUlnConfigured: true,
+            executorConfigured: true,
+        })
+        await setPeerConfig({ enforcedOptions: { send: Buffer.from([0, 3]), sendAndCall: Buffer.from([0, 3]) } })
+        await assertPartialStateInert()
+
+        // E: install each local directional limiter independently.
+        await setPeerConfig({ outboundRateLimit: [{ refillPerSecond: bn(0), capacity: bn(0) }] })
+        await assertPartialStateInert()
+        await setPeerConfig({ inboundRateLimit: [{ refillPerSecond: bn(0), capacity: bn(0) }] })
+        await assertPartialStateInert()
+
+        // F: intended application settings and pause roles are complete, but
+        // no movement is possible before the explicit activation action.
+        await setPeerConfig({ outboundRateLimit: [{ refillPerSecond: bn(100), capacity: bn(1_000_000) }] })
+        await setPeerConfig({ inboundRateLimit: [{ refillPerSecond: bn(100), capacity: bn(1_000_000) }] })
+        await oft.methods
+            .setOftConfig({ pauser: [payer.publicKey] })
+            .accountsStrict({ admin: payer.publicKey, oftStore })
+            .rpc()
+        await oft.methods
+            .setOftConfig({ unpauser: [payer.publicKey] })
+            .accountsStrict({ admin: payer.publicKey, oftStore })
+            .rpc()
+        await assertPartialStateInert()
+
+        const beforeActivation = await oft.account.oftStore.fetch(oftStore)
+        expect(beforeActivation.paused).toBe(true)
+        await expectRejected(() =>
+            oft.methods
+                .setPause({ paused: false })
+                .accountsStrict({ signer: attacker.publicKey, oftStore })
+                .signers([attacker])
+                .rpc()
+        )
+        await oft.methods.setPause({ paused: false }).accountsStrict({ signer: payer.publicKey, oftStore }).rpc()
+        expect((await oft.account.oftStore.fetch(oftStore)).paused).toBe(false)
+        await expect(quoteOft(1n)).resolves.toBeDefined()
+        await expect(quoteSend(1n)).resolves.toBeDefined()
     })
 
     it('debits holder tokens atomically into escrow and increases TVL', async () => {
         const amount = 200_000n
-        await send(amount)
+        const signature = await send(amount)
+        const transaction = await provider.connection.getTransaction(signature, {
+            commitment: 'confirmed',
+            maxSupportedTransactionVersion: 0,
+        })
+        expect(transaction?.meta?.logMessages?.some((line) => line.includes('MOCK_PACKET_CREATED count=1'))).toBe(true)
+        expect((await endpoint.account.packetCounter.fetch(packetCounter)).count.toString()).toBe('1')
         expect((await getAccount(provider.connection, holderToken)).amount).toBe(HOLDER_START - amount)
         expect((await getAccount(provider.connection, escrow.publicKey)).amount).toBe(amount)
         expect((await oft.account.oftStore.fetch(oftStore)).tvlLd.toString()).toBe(amount.toString())

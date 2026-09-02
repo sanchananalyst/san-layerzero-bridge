@@ -51,6 +51,7 @@ describe('SanOFT', function () {
 
         await solanaPeer.connect(owner).setPeer(robinhoodEid, toBytes32(sanOFT.address))
         await sanOFT.connect(owner).setPeer(solanaEid, toBytes32(solanaPeer.address))
+        await sanOFT.connect(owner).unpause()
     })
 
     it('configures constructor metadata, endpoint, token address, and owner', async function () {

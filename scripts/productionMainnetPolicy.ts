@@ -19,6 +19,12 @@ import { CANONICAL_SAN_MINT, LEGACY_SPL_TOKEN_PROGRAM } from './sanMintConfig'
 export const PRODUCTION_SOLANA_ENDPOINT = '76y77prsiCMvXMjuoZ5VRrhG5qYBrUMYTE5WgHqgjEn6'
 export const PRODUCTION_ROBINHOOD_ENDPOINT = '0x6f475642a6e85809b1c36fa62763669b1b48dd5b'
 export const PRODUCTION_SOLANA_OFT_PROGRAM = '9myHzfqsbJfGbYxpCvVCYqLaB4Co1RCo2a8T4QSkTvcD'
+export const SOLANA_UPGRADEABLE_LOADER = 'BPFLoaderUpgradeab1e11111111111111111111111'
+
+export enum ProductionExpectedState {
+    PRE_ACTIVATION_INERT = 'PRE_ACTIVATION_INERT',
+    CANARY_ACTIVE = 'CANARY_ACTIVE',
+}
 
 export interface ProductionAuthorityPolicy {
     solanaUpgradeAuthority: string
@@ -26,6 +32,8 @@ export interface ProductionAuthorityPolicy {
     solanaDelegate: string
     robinhoodOwner: string
     robinhoodDelegate: string
+    solanaPauser: string
+    solanaUnpauser: string
 }
 
 export interface ApprovedProductionState extends ProductionAuthorityPolicy {
@@ -35,6 +43,20 @@ export interface ApprovedProductionState extends ProductionAuthorityPolicy {
     robinhoodSourceConfirmations: bigint | null
     rateLimitProfile: ProductionRateLimitProfile
     expectedRobinhoodSupplyRaw: bigint
+    expectedSolanaMintSupplyRaw: bigint
+    expectedSolanaMintAuthority: string | null
+    expectedSolanaFreezeAuthority: string | null
+    forbiddenSolanaBootstrapAuthorities: string[]
+    forbiddenRobinhoodBootstrapAuthorities: string[]
+    expectedSolanaProgramData: string
+    expectedSolanaProgramDataSha256: string
+    expectedRobinhoodRuntimeCodeHash: string
+    expectedInFlight: {
+        inventoryId: string
+        inventorySha256: string
+        solanaToRobinhoodRaw: bigint
+        robinhoodToSolanaRaw: bigint
+    }
 }
 
 export interface ProductionMainnetObservation {
@@ -44,6 +66,10 @@ export interface ProductionMainnetObservation {
         tokenProgram: string
         decimals: number
         sharedDecimals: number
+        oftType: number
+        mintSupplyRaw: bigint
+        mintAuthority: string | null
+        freezeAuthority: string | null
         programId: string
         endpoint: string
         oftStore: string
@@ -53,6 +79,18 @@ export interface ProductionMainnetObservation {
         upgradeAuthority: string
         storeAdmin: string
         delegate: string
+        paused: boolean
+        pauser: string | null
+        unpauser: string | null
+        programExecutable: boolean
+        programOwner: string
+        programData: string
+        programDataSha256: string
+        programDataOwner: string
+        programDataExecutable: boolean
+        escrowProgramOwner: string
+        escrowMint: string
+        escrowAuthority: string
     }
     robinhood: {
         chainId: number
@@ -64,6 +102,10 @@ export interface ProductionMainnetObservation {
         totalSupplyRaw: bigint
         owner: string
         delegate: string
+        paused: boolean
+        runtimeCodeHash: string
+        proxyImplementation: string | null
+        proxyAdmin: string | null
     }
     layerZero: BridgeObservation
     enforcedOptions: {
@@ -71,6 +113,15 @@ export interface ProductionMainnetObservation {
         robinhoodReceive: { gasOrCompute: bigint; value: bigint }
     }
     rateLimits: Partial<ProductionRateLimitPlan>
+    inFlight: {
+        inventoryId: string
+        inventorySha256: string
+        messageCount: number
+        solanaSlot: bigint
+        robinhoodBlock: bigint
+        solanaToRobinhoodRaw: bigint
+        robinhoodToSolanaRaw: bigint
+    }
 }
 
 const equalSolanaAddress = (actual: string, expected: string, label: string): void => {
@@ -105,6 +156,15 @@ const requireEvmAddress = (value: string, label: string): void => {
     }
 }
 
+const requireHash = (value: string, label: string): void => {
+    if (!/^0x[0-9a-fA-F]{64}$/.test(value)) throw new Error(`${label} must be an explicit 32-byte hash`)
+}
+
+const isSameSolanaAddress = (left: string, right: string): boolean => new PublicKey(left).equals(new PublicKey(right))
+
+const isSameEvmAddress = (left: string, right: string): boolean =>
+    ethers.utils.getAddress(left) === ethers.utils.getAddress(right)
+
 const bytes32FromSolana = (address: string): string =>
     ethers.utils.hexlify(new PublicKey(address).toBytes()).toLowerCase()
 const bytes32FromEvm = (address: string): string => ethers.utils.hexZeroPad(address, 32).toLowerCase()
@@ -122,12 +182,41 @@ const validateApprovedState = (approved: ApprovedProductionState): void => {
         ['approved Solana upgrade authority', approved.solanaUpgradeAuthority],
         ['approved Solana Store admin', approved.solanaStoreAdmin],
         ['approved Solana delegate', approved.solanaDelegate],
+        ['approved Solana pauser', approved.solanaPauser],
+        ['approved Solana unpauser', approved.solanaUnpauser],
+        ['approved Solana ProgramData', approved.expectedSolanaProgramData],
     ] as const) {
         requireSolanaAddress(value, label)
     }
     requireEvmAddress(approved.robinhoodOft, 'approved Robinhood OFT')
     requireEvmAddress(approved.robinhoodOwner, 'approved Robinhood owner')
     requireEvmAddress(approved.robinhoodDelegate, 'approved Robinhood delegate')
+    requireHash(approved.expectedSolanaProgramDataSha256, 'approved Solana ProgramData SHA-256')
+    requireHash(approved.expectedRobinhoodRuntimeCodeHash, 'approved Robinhood runtime code hash')
+    requireHash(approved.expectedInFlight.inventorySha256, 'approved in-flight inventory SHA-256')
+    for (const [label, value] of [
+        ['approved Solana mint authority', approved.expectedSolanaMintAuthority],
+        ['approved Solana freeze authority', approved.expectedSolanaFreezeAuthority],
+    ] as const) {
+        if (value != null) requireSolanaAddress(value, label)
+    }
+    if (approved.expectedSolanaMintSupplyRaw < 0n) throw new Error('Approved Solana mint supply cannot be negative')
+    if (approved.forbiddenSolanaBootstrapAuthorities.length === 0) {
+        throw new Error('At least one forbidden Solana bootstrap authority is required')
+    }
+    if (approved.forbiddenRobinhoodBootstrapAuthorities.length === 0) {
+        throw new Error('At least one forbidden Robinhood bootstrap authority is required')
+    }
+    approved.forbiddenSolanaBootstrapAuthorities.forEach((value, index) =>
+        requireSolanaAddress(value, `forbidden Solana bootstrap authority ${index}`)
+    )
+    approved.forbiddenRobinhoodBootstrapAuthorities.forEach((value, index) =>
+        requireEvmAddress(value, `forbidden Robinhood bootstrap authority ${index}`)
+    )
+    if (approved.expectedInFlight.solanaToRobinhoodRaw < 0n || approved.expectedInFlight.robinhoodToSolanaRaw < 0n) {
+        throw new Error('Approved in-flight amounts cannot be negative')
+    }
+    if (!approved.expectedInFlight.inventoryId.trim()) throw new Error('Approved in-flight inventory ID is required')
 }
 
 /**
@@ -136,7 +225,8 @@ const validateApprovedState = (approved: ApprovedProductionState): void => {
  */
 export function validateProductionMainnetObservation(
     observation: ProductionMainnetObservation,
-    approved: ApprovedProductionState
+    approved: ApprovedProductionState,
+    expectedState: ProductionExpectedState
 ): void {
     validateApprovedState(approved)
 
@@ -157,24 +247,98 @@ export function validateProductionMainnetObservation(
     if (observation.solana.decimals !== 6 || observation.solana.sharedDecimals !== 6) {
         throw new Error('Solana decimals/sharedDecimals must both equal 6')
     }
+    if (observation.solana.oftType !== 1) throw new Error('Solana OFT Store is not in Adapter mode')
+    if (observation.solana.mintSupplyRaw !== approved.expectedSolanaMintSupplyRaw) {
+        throw new Error('Canonical SAN mint supply differs from the approved snapshot')
+    }
+    if (observation.solana.mintAuthority !== approved.expectedSolanaMintAuthority) {
+        throw new Error('Canonical SAN mint authority differs from the approved value')
+    }
+    if (observation.solana.freezeAuthority !== approved.expectedSolanaFreezeAuthority) {
+        throw new Error('Canonical SAN freeze authority differs from the approved value')
+    }
+    if (!observation.solana.programExecutable) throw new Error('Solana OFT program account is not executable')
+    equalSolanaAddress(observation.solana.programOwner, SOLANA_UPGRADEABLE_LOADER, 'Solana program owner')
+    equalSolanaAddress(observation.solana.programData, approved.expectedSolanaProgramData, 'Solana ProgramData account')
+    equalSolanaAddress(observation.solana.programDataOwner, SOLANA_UPGRADEABLE_LOADER, 'Solana ProgramData owner')
+    if (observation.solana.programDataExecutable) throw new Error('Solana ProgramData account must not be executable')
+    requireHash(observation.solana.programDataSha256, 'observed Solana ProgramData SHA-256')
+    if (observation.solana.programDataSha256.toLowerCase() !== approved.expectedSolanaProgramDataSha256.toLowerCase()) {
+        throw new Error('Solana ProgramData hash differs from the approved reproducible artifact')
+    }
+    equalSolanaAddress(observation.solana.escrowProgramOwner, LEGACY_SPL_TOKEN_PROGRAM, 'escrow token program owner')
+    equalSolanaAddress(observation.solana.escrowMint, CANONICAL_SAN_MINT, 'escrow mint')
+    equalSolanaAddress(observation.solana.escrowAuthority, approved.solanaOftStore, 'escrow authority')
+    requireHash(observation.robinhood.runtimeCodeHash, 'observed Robinhood runtime code hash')
+    if (
+        observation.robinhood.runtimeCodeHash.toLowerCase() !== approved.expectedRobinhoodRuntimeCodeHash.toLowerCase()
+    ) {
+        throw new Error('Robinhood runtime bytecode hash differs from the approved artifact')
+    }
+    if (observation.robinhood.proxyImplementation != null || observation.robinhood.proxyAdmin != null) {
+        throw new Error('Robinhood SanOFT must be a non-proxy deployment')
+    }
     if (observation.robinhood.decimals !== 6 || observation.robinhood.sharedDecimals !== 6) {
         throw new Error('Robinhood decimals/sharedDecimals must both equal 6')
     }
     if (observation.solana.escrowBalanceRaw < observation.solana.tvlRaw) {
         throw new Error('Solana escrow balance is below OFT Store TVL')
     }
-    if (observation.robinhood.totalSupplyRaw > observation.solana.tvlRaw) {
-        throw new Error('Robinhood supply exceeds Solana accounted TVL')
-    }
     if (observation.robinhood.totalSupplyRaw !== approved.expectedRobinhoodSupplyRaw) {
         throw new Error('Robinhood supply differs from the explicitly approved expected supply')
+    }
+    if (observation.inFlight.solanaSlot <= 0n || observation.inFlight.robinhoodBlock <= 0n) {
+        throw new Error('In-flight accounting requires explicit positive RPC snapshot heights')
+    }
+    if (
+        observation.inFlight.inventoryId !== approved.expectedInFlight.inventoryId ||
+        observation.inFlight.inventorySha256.toLowerCase() !==
+            approved.expectedInFlight.inventorySha256.toLowerCase() ||
+        observation.inFlight.solanaToRobinhoodRaw !== approved.expectedInFlight.solanaToRobinhoodRaw ||
+        observation.inFlight.robinhoodToSolanaRaw !== approved.expectedInFlight.robinhoodToSolanaRaw
+    ) {
+        throw new Error('Observed in-flight amounts differ from the independently approved message inventory')
+    }
+    requireHash(observation.inFlight.inventorySha256, 'observed in-flight inventory SHA-256')
+    if (!Number.isSafeInteger(observation.inFlight.messageCount) || observation.inFlight.messageCount < 0) {
+        throw new Error('Observed in-flight message count is invalid')
+    }
+    const accountedRaw =
+        observation.robinhood.totalSupplyRaw +
+        observation.inFlight.solanaToRobinhoodRaw +
+        observation.inFlight.robinhoodToSolanaRaw
+    if (observation.solana.tvlRaw !== accountedRaw) {
+        throw new Error('Solana TVL does not exactly equal Robinhood supply plus both in-flight directions')
     }
 
     equalSolanaAddress(observation.solana.upgradeAuthority, approved.solanaUpgradeAuthority, 'Solana upgrade authority')
     equalSolanaAddress(observation.solana.storeAdmin, approved.solanaStoreAdmin, 'Solana Store admin')
     equalSolanaAddress(observation.solana.delegate, approved.solanaDelegate, 'Solana delegate')
+    if (observation.solana.pauser == null) throw new Error('Solana pauser is not configured')
+    if (observation.solana.unpauser == null) throw new Error('Solana unpauser is not configured')
+    equalSolanaAddress(observation.solana.pauser, approved.solanaPauser, 'Solana pauser')
+    equalSolanaAddress(observation.solana.unpauser, approved.solanaUnpauser, 'Solana unpauser')
     equalEvmAddress(observation.robinhood.owner, approved.robinhoodOwner, 'Robinhood owner')
     equalEvmAddress(observation.robinhood.delegate, approved.robinhoodDelegate, 'Robinhood delegate')
+
+    const solanaPrivileged = [
+        observation.solana.upgradeAuthority,
+        observation.solana.storeAdmin,
+        observation.solana.delegate,
+        observation.solana.pauser,
+        observation.solana.unpauser,
+    ] as string[]
+    for (const bootstrap of approved.forbiddenSolanaBootstrapAuthorities) {
+        if (solanaPrivileged.some((authority) => isSameSolanaAddress(authority, bootstrap))) {
+            throw new Error('A Solana privileged role is still controlled by a forbidden bootstrap authority')
+        }
+    }
+    const robinhoodPrivileged = [observation.robinhood.owner, observation.robinhood.delegate]
+    for (const bootstrap of approved.forbiddenRobinhoodBootstrapAuthorities) {
+        if (robinhoodPrivileged.some((authority) => isSameEvmAddress(authority, bootstrap))) {
+            throw new Error('A Robinhood privileged role is still controlled by a forbidden bootstrap authority')
+        }
+    }
 
     for (const [label, option] of [
         ['Solana receive', observation.enforcedOptions.solanaReceive],
@@ -198,4 +362,58 @@ export function validateProductionMainnetObservation(
         policy
     )
     validateProductionRateLimitPlan(observation.rateLimits, approved.rateLimitProfile)
+    for (const [label, limit] of [
+        ['Solana outbound', observation.rateLimits.solana?.outbound],
+        ['Solana inbound', observation.rateLimits.solana?.inbound],
+        ['Robinhood outbound', observation.rateLimits.robinhood?.outbound],
+        ['Robinhood inbound', observation.rateLimits.robinhood?.inbound],
+    ] as const) {
+        if (limit?.available == null || limit.available < 0n || limit.available > limit.capacity) {
+            throw new Error(`${label} available capacity is missing or outside its configured bucket`)
+        }
+    }
+
+    if (expectedState === ProductionExpectedState.PRE_ACTIVATION_INERT) {
+        if (!observation.solana.paused || !observation.robinhood.paused) {
+            throw new Error('PRE_ACTIVATION_INERT requires both bridge applications paused')
+        }
+    } else if (expectedState === ProductionExpectedState.CANARY_ACTIVE) {
+        if (observation.solana.paused || observation.robinhood.paused) {
+            throw new Error('CANARY_ACTIVE requires both bridge applications unpaused')
+        }
+        if (
+            observation.solana.tvlRaw !== 0n ||
+            observation.solana.escrowBalanceRaw !== 0n ||
+            observation.robinhood.totalSupplyRaw !== 0n ||
+            observation.inFlight.solanaToRobinhoodRaw !== 0n ||
+            observation.inFlight.robinhoodToSolanaRaw !== 0n ||
+            observation.inFlight.messageCount !== 0
+        ) {
+            throw new Error('CANARY_ACTIVE is only valid for the initial zero-state public activation boundary')
+        }
+    } else {
+        throw new Error('An explicit supported production activation state is required')
+    }
+}
+
+export function validateRepeatedProductionObservations(
+    first: ProductionMainnetObservation,
+    second: ProductionMainnetObservation
+): void {
+    const stable = (value: ProductionMainnetObservation): string =>
+        JSON.stringify(value, (key, item) => {
+            if (key === 'solanaSlot' || key === 'robinhoodBlock') return undefined
+            return typeof item === 'bigint' ? item.toString() : item
+        })
+    if (stable(first) !== stable(second)) {
+        throw new Error('Two consecutive production observations differ; refusing a composite or changing RPC snapshot')
+    }
+}
+
+export async function collectRepeatedProductionObservations(
+    collector: () => Promise<ProductionMainnetObservation>
+): Promise<[ProductionMainnetObservation, ProductionMainnetObservation]> {
+    const first = await collector()
+    const second = await collector()
+    return [first, second]
 }

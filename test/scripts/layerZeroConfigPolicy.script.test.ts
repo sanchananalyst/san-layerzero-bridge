@@ -35,6 +35,9 @@ const fixture = (): BridgeObservation => ({
         sendLibrary: SAN_LAYERZERO_POLICY.solana.sendLibrary,
         receiveLibrary: SAN_LAYERZERO_POLICY.solana.receiveLibrary,
         executor: SAN_LAYERZERO_POLICY.solana.executor,
+        sendLibraryExplicit: true,
+        receiveLibraryExplicit: true,
+        executorExplicit: true,
         peer: PEERS.solana,
         send: {
             confirmations: 32n,
@@ -42,6 +45,8 @@ const fixture = (): BridgeObservation => ({
             optionalDvns: [...SAN_LAYERZERO_POLICY.solana.optionalDvns],
             optionalThreshold: 2,
             explicitNoRequired: true,
+            explicitConfirmations: true,
+            explicitOptionalDvns: true,
         },
         receive: {
             confirmations: 32n,
@@ -49,12 +54,17 @@ const fixture = (): BridgeObservation => ({
             optionalDvns: [...SAN_LAYERZERO_POLICY.solana.optionalDvns],
             optionalThreshold: 2,
             explicitNoRequired: true,
+            explicitConfirmations: true,
+            explicitOptionalDvns: true,
         },
     },
     robinhood: {
         sendLibrary: SAN_LAYERZERO_POLICY.robinhood.sendLibrary,
         receiveLibrary: SAN_LAYERZERO_POLICY.robinhood.receiveLibrary,
         executor: SAN_LAYERZERO_POLICY.robinhood.executor,
+        sendLibraryExplicit: true,
+        receiveLibraryExplicit: true,
+        executorExplicit: true,
         peer: PEERS.robinhood,
         send: {
             confirmations: 32n,
@@ -62,6 +72,8 @@ const fixture = (): BridgeObservation => ({
             optionalDvns: [...SAN_LAYERZERO_POLICY.robinhood.optionalDvns],
             optionalThreshold: 2,
             explicitNoRequired: true,
+            explicitConfirmations: true,
+            explicitOptionalDvns: true,
         },
         receive: {
             confirmations: 32n,
@@ -69,6 +81,8 @@ const fixture = (): BridgeObservation => ({
             optionalDvns: [...SAN_LAYERZERO_POLICY.robinhood.optionalDvns],
             optionalThreshold: 2,
             explicitNoRequired: true,
+            explicitConfirmations: true,
+            explicitOptionalDvns: true,
         },
     },
 })
@@ -96,6 +110,20 @@ describe('future deployed LayerZero configuration policy', () => {
         fails((value) => {
             value.solana.send.explicitNoRequired = false
         }))
+    it('rejects inherited libraries, Executor, confirmations, or optional DVNs', () => {
+        fails((value) => {
+            value.robinhood.sendLibraryExplicit = false
+        })
+        fails((value) => {
+            value.solana.executorExplicit = false
+        })
+        fails((value) => {
+            value.robinhood.receive.explicitConfirmations = false
+        })
+        fails((value) => {
+            value.solana.send.explicitOptionalDvns = false
+        })
+    })
     it('rejects an explicit required DVN', () =>
         fails((value) => {
             value.robinhood.receive.requiredDvns = ['0xrequired']

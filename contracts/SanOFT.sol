@@ -49,6 +49,9 @@ contract SanOFT is OFT, Pausable {
     ) OFT(name_, symbol_, endpoint_, delegate_) Ownable(delegate_) {
         _initializeBucket(_outboundBucket, false);
         _initializeBucket(_inboundBucket, true);
+        // Deployment and wiring are inert until a separately approved
+        // production-readiness check is followed by an explicit unpause.
+        _pause();
     }
 
     /// @notice SAN uses the canonical Solana mint's six-decimal precision on

@@ -6,6 +6,7 @@ export const PRODUCTION_RATE_LIMIT_PROFILES = Object.freeze({
 
 export interface DirectionalRateLimit {
     capacity: bigint
+    available?: bigint
     refill: bigint
     durationSeconds?: bigint
 }

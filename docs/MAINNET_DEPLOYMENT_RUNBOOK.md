@@ -35,17 +35,19 @@ Each numbered item is a hard stop/read-back gate. Never batch steps.
    hash. Match the approved verifiable build byte-for-byte.
 4. **Create the real SAN OFT Adapter.** Use Adapter lock/unlock mode, canonical
    SAN mint, legacy token program, and the approved Store admin/delegate. Do not
-   create a Native OFT and do not change SAN mint/freeze authorities.
+   create a Native OFT and do not change SAN mint/freeze authorities. The
+   transaction must create a Store whose on-chain `paused` field is already
+   `true`; there is no post-creation pause race to close.
 5. **Verify zero custody state.** Read back OFT type, mint, token program, Store,
-   escrow, admin, delegate, `escrow.amount == 0`, and `tvl_ld == 0`. Confirm both
-   Solana peer rate limiters are still unset until the separately approved wiring
-   phase.
+   escrow, admin, delegate, `paused == true`, `escrow.amount == 0`, and
+   `tvl_ld == 0`. Confirm both Solana peer rate limiters are still unset until the
+   separately approved wiring phase.
 6. **Deploy Robinhood SanOFT.** Require chain ID `4663`, Endpoint EID `30416`,
    name `San Chan`, symbol `SAN`, 6 decimals, approved non-upgradeable creation
    bytecode, and the approved owner Safe. Initial total supply must be zero.
-7. **Pause Robinhood SanOFT.** Submit the separately decoded `pause()` call from
-   the owner Safe before any peer exists. Require a successful receipt and
-   `paused() == true`. Do not unpause.
+7. **Verify default EVM pause.** The constructor must leave `paused() == true`.
+   Treat any unpaused deployment as wrong bytecode and stop; do not rely on a
+   follow-up pause transaction to repair it.
 8. **Verify zero EVM supply.** Read name, symbol, decimals, shared decimals,
    conversion rate, token address, Endpoint, owner, delegate, pause, both rate
    buckets, and `totalSupply() == 0`. Verify no proxy and no arbitrary mint ABI.
@@ -54,9 +56,12 @@ Each numbered item is a hard stop/read-back gate. Never batch steps.
    SanOFT ownership, and Robinhood Endpoint delegate exactly as approved.
 10. **Verify authority read-back.** Independently query every authority from two
     RPC providers. Confirm no deployer or personal wallet retains privilege.
-11. **STOP BEFORE WIRING.** Publish the inert deployment record and hashes. The
-    Solana escrow/TVL and Robinhood supply must remain zero and Robinhood must
-    remain paused.
+11. **Archive the deployment-only read-back and stop before wiring.** Publish
+    the inert deployment record and hashes. Solana escrow/TVL and Robinhood
+    supply must remain zero, and both applications must remain paused. The full
+    production checker intentionally requires peers, explicit LayerZero config,
+    and all four limiters, so it cannot pass until the later wiring runbook is
+    complete; do not weaken it to create a deployment-only success.
 
 ## Failure policy
 

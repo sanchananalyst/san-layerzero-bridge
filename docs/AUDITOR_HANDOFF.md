@@ -2,8 +2,11 @@
 
 ## Audit target and status
 
-Production code commit:
-`a53a86bcc0a18934a19f2889ba61ceb1633fa359`.
+Phase 5A.2 base commit:
+`515d008a0702bb3c4748ca87e0c689e689d4458b`. The fail-closed activation
+patch is currently an uncommitted review candidate; no deployment audit may
+target the earlier Phase 5A.1 hash or the mutable working tree. A new immutable
+commit is required after this review.
 Phase 5A.1 is pre-mainnet. No production program, contract, Store, escrow, peer,
 security configuration, multisig, or liquidity exists. This package does not
 authorize Phase 5B.
@@ -78,13 +81,15 @@ tSAN/testnet identities are prohibited in production.
 
 ## Build evidence
 
-- Solana local ELF SHA-256:
+- **Superseded Phase 5A.1 evidence; do not approve for deployment after the
+  initialize-paused patch.** Solana local ELF SHA-256:
   `1bb1093d63402e680d5d52fb3cb7cff44a0ada7b9e5835e35d44eca07b79a395`;
   executable hash:
   `955f6b81689a285cd7fe9875d7575347d9766149698b306f3b74e00e0f4bdf45`;
   571,888 bytes. This is **not yet reproducible/verifiable** because Docker is
   unavailable.
-- EVM creation SHA-256:
+- **Superseded Phase 5A.1 evidence; the constructor bytecode changed in Phase
+  5A.2.** EVM creation SHA-256:
   `6769923ed725590f7a28f05f3e75d5c7bf47aa62c7feef99eff47812f6a5c06d`;
   runtime SHA-256:
   `97997ac5162118757e4f311db039d4df9999030a1ff02031ea859a9915ffa690`;
@@ -94,10 +99,10 @@ tSAN/testnet identities are prohibited in production.
 ## Findings, accepted risks, and decisions
 
 Initial HIGH tooling findings—private-key export, registered mutation paths, and
-generic mainnet wiring—were remediated at the audit commit. The Codex Security
+generic mainnet wiring—were remediated at the Phase 5A.1 audit commit. The Codex Security
 scan `26e024e8-031d-4d62-9b0d-e07a0f07437c` sealed with zero remaining
 reportable findings; its workbench target began before the remediation commit,
-so the exact audit candidate still requires independent change review.
+so the exact Phase 5A.2 candidate still requires review of its eventual commit.
 
 Accepted design risks: multisig governance can maliciously upgrade/reconfigure;
 Solana buckets measure net imbalance through cross-refill rather than strict
