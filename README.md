@@ -53,6 +53,19 @@ read-back.
 
 ## Security Review Requested
 
+The current immutable production-code audit target is
+`d28762288bb5180ff292f57eef7132191f2037ec`, the squash merge of
+[security PR #2](https://github.com/sanchananalyst/san-layerzero-bridge/pull/2).
+It supersedes `a53a86bcc0a18934a19f2889ba61ceb1633fa359` because both bridge
+applications now initialize paused and the production activation checker and
+partial-configuration regressions are part of the reviewed code boundary.
+
+The fail-closed change prevents bridging throughout incremental deployment,
+wiring, security configuration, and governance handoff. Activation is still a
+separate governance action: once both applications are unpaused, the bridge is
+permissionless and an ordinary holder may race the operator canary. This is a
+bounded public canary, not an exclusive first-transfer mechanism.
+
 We welcome review from Solana, LayerZero, EVM, bridge, and application-security
 engineers. Please focus on:
 
@@ -76,6 +89,7 @@ Start with:
 - [Responsible disclosure](./SECURITY.md)
 - [Auditor handoff](./docs/AUDITOR_HANDOFF.md)
 - [Exact audit scope](./docs/AUDIT_SCOPE.md)
+- [Audit target and commit map](./docs/AUDIT_TARGET.md)
 - [Production security review](./docs/PRODUCTION_SECURITY_REVIEW.md)
 
 Potentially exploitable vulnerabilities should be reported privately before
@@ -178,9 +192,11 @@ These commands build and test locally. They do not authorize deployment,
 wiring, token movement, or any other blockchain transaction. Transaction-
 capable mainnet task paths are structurally disabled in this revision.
 
-The production-code audit candidate is commit
-`a53a86bcc0a18934a19f2889ba61ceb1633fa359`. Any production-code change after
-that commit requires independent change review.
+The production-code audit target is commit
+`d28762288bb5180ff292f57eef7132191f2037ec`. Later documentation-only commits do
+not change that code target. Any later production-code, dependency-resolution,
+build-setting, or security-policy change creates a new audit boundary and
+requires independent change review.
 
 ## Current blockers
 
@@ -192,7 +208,13 @@ Before Phase 5B, the project still requires at least:
 - fresh LayerZero metadata and DVN/Executor review;
 - final Squads/Safe identities, signer separation, and recovery policy;
 - fresh market/liquidity review of rate limits;
+- a coherent, independently verifiable Solana observation strategy: the current
+  checker uses repeated finalized reads but cannot prove one historical common
+  slot across every account and configuration read;
+- an independently reviewed in-flight message scanner whose signed artifact
+  proves chain ranges, pathway identity, packet status, and completeness rather
+  than only supplying a hash and totals;
 - a separate explicit authorization for every production transaction.
 
-See [Phase 5A.1 blockers](./docs/PHASE_5A1_BLOCKERS.md). No repository content
+See [production-readiness blockers](./docs/PHASE_5A1_BLOCKERS.md). No repository content
 should be interpreted as permission to proceed to mainnet.

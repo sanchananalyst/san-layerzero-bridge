@@ -3,9 +3,16 @@
 ## Immutable code boundary
 
 Audit production code commit
-`a53a86bcc0a18934a19f2889ba61ceb1633fa359`. Later commits contain handoff and
-publication documents only; any later production-code change creates a new audit
-boundary and requires change review.
+`d28762288bb5180ff292f57eef7132191f2037ec`. This is the squash merge of
+[security PR #2](https://github.com/sanchananalyst/san-layerzero-bridge/pull/2)
+and supersedes `a53a86bcc0a18934a19f2889ba61ceb1633fa359`. The target changed
+because the previous code initialized the Solana Store unpaused and did not
+contain the both-chain fail-closed activation patch or its checker/regressions.
+
+The later `Update audit target after fail-closed activation fix` commit is
+documentation-only and does not change this production-code boundary. Any later
+production-code, dependency-resolution, compiler/build-setting, or policy change
+creates a new audit target and requires change review.
 
 ## Production source and dependency boundary
 
@@ -32,7 +39,8 @@ Review every line of:
 
 - `config/mainnet.ts`
 - `deploy/SanOFT.ts`
-- `scripts/checkLayerZeroConfig.ts`, `checkSolanaProgramId.ts`,
+- `scripts/checkLayerZeroConfig.ts`, `checkProductionMainnet.ts`,
+  `inFlightInventory.ts`, `checkSolanaProgramId.ts`,
   `inspectSanMint.ts`, `sanMintConfig.ts`, `layerZeroConfigPolicy.ts`,
   `productionMainnetPolicy.ts`, `productionRateLimitPolicy.ts`,
   `productionToolingPolicy.ts`
@@ -54,9 +62,11 @@ that their IDs/RPCs cannot cross into the production registry or policy.
 ## Required tests and evidence
 
 - `test/foundry/SanOFT.t.sol`
-- `test/hardhat/SanOFT.test.ts`, `SanOFTEmergency.test.ts`
+- `test/hardhat/SanOFT.test.ts`, `SanOFTActivation.test.ts`,
+  `SanOFTEmergency.test.ts`
 - `test/anchor/oftAdapter.runtime.test.ts`
 - `test/scripts/inspectSanMint.script.test.ts`,
+  `checkProductionMainnet.script.test.ts`,
   `layerZeroConfigPolicy.script.test.ts`,
   `oftEscrowSecurity.script.test.ts`,
   `productionMainnetPolicy.script.test.ts`,
@@ -66,13 +76,16 @@ that their IDs/RPCs cannot cross into the production registry or policy.
 - `contracts/mocks/OFTTestPeer.sol`, `test/mocks/ERC20Mock.sol`,
   `test/mocks/OFTComposerMock.sol` only as test isolation/support
 - `docs/ARCHITECTURE.md`, `ESCROW_SECURITY_REVIEW.md`,
+  `PARTIAL_CONFIGURATION_SECURITY.md`, `PRODUCTION_ACTIVATION_CHECKER.md`,
   `PRODUCTION_SECURITY_REVIEW.md`, `PRODUCTION_RATE_LIMITS.md`,
   `ROBINHOOD_FINALITY_POLICY.md`, `PRODUCTION_GOVERNANCE.md`,
   `AUTHORITY_HANDOFF.md`, and all three mainnet runbooks/checklist.
 
 Verify source-to-artifact equivalence against the hashes in
 `PRODUCTION_EVM_ARTIFACT.md` and `PRODUCTION_VERIFIABLE_BUILD.md`. The latter is
-not yet a reproducible/verifiable artifact and is an audit blocker.
+not yet a reproducible/verifiable artifact and is an audit blocker. All hashes
+recorded before the initialize-paused patch are superseded and must not be used
+to approve deployment.
 
 ## Review objectives
 
@@ -80,4 +93,12 @@ Prove no unbacked mint or escrow drain; exact Endpoint/peer/replay semantics;
 six-decimal/no-dust accounting; limiter/pause atomicity and omission handling;
 governance and upgrade powers; no testnet/wrong-chain execution; no unsafe retry
 or partial wiring; no key disclosure; and fail-closed behavior for every absent
-production identity or approval.
+production identity or approval. Explicitly verify that both applications start
+paused, every partial wiring state remains inert, interrupted activation is
+recoverable by re-pausing, and public activation is permissionless rather than
+an exclusive operator canary.
+
+Two evidence findings remain in scope and block Phase 5B: the checker does not
+prove one common historical Solana slot across all reads, and the external
+in-flight inventory does not yet carry independently verifiable scanner/range/
+packet-status provenance and completeness.

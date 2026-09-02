@@ -2,14 +2,23 @@
 
 ## Audit target and status
 
-Phase 5A.2 base commit:
-`515d008a0702bb3c4748ca87e0c689e689d4458b`. The fail-closed activation
-patch is currently an uncommitted review candidate; no deployment audit may
-target the earlier Phase 5A.1 hash or the mutable working tree. A new immutable
-commit is required after this review.
-Phase 5A.1 is pre-mainnet. No production program, contract, Store, escrow, peer,
-security configuration, multisig, or liquidity exists. This package does not
-authorize Phase 5B.
+The immutable production-code audit target is
+`d28762288bb5180ff292f57eef7132191f2037ec`, the squash merge of
+[security PR #2](https://github.com/sanchananalyst/san-layerzero-bridge/pull/2).
+The PR candidate was `28e0ec712a9a4e5219b9c0245270b21787279820`
+against exact base `515d008a0702bb3c4748ca87e0c689e689d4458b`.
+The prior audit target, `a53a86bcc0a18934a19f2889ba61ceb1633fa359`,
+is superseded because it did not contain the fail-closed activation boundary.
+
+Phase 5A.2 is pre-mainnet. No production program, contract, Store, escrow, peer,
+security configuration, multisig, or liquidity exists. Later documentation-only
+commits do not change the code target. This package does not authorize Phase 5B.
+
+Both applications now initialize bridge-paused. They must remain paused through
+wiring, complete security configuration, governance handoff, and independent
+read-back. Unpausing Solana last is the public activation boundary; after it,
+bridging is permissionless and the operator has no exclusive first-transfer
+lane.
 
 ## Architecture and identities
 
@@ -99,10 +108,20 @@ tSAN/testnet identities are prohibited in production.
 ## Findings, accepted risks, and decisions
 
 Initial HIGH tooling findings—private-key export, registered mutation paths, and
-generic mainnet wiring—were remediated at the Phase 5A.1 audit commit. The Codex Security
-scan `26e024e8-031d-4d62-9b0d-e07a0f07437c` sealed with zero remaining
-reportable findings; its workbench target began before the remediation commit,
-so the exact Phase 5A.2 candidate still requires review of its eventual commit.
+generic mainnet wiring—were remediated at the Phase 5A.1 audit commit. The
+subsequent fail-open initialization finding was remediated by PR #2. The exact
+PR range received a hostile 36-file Codex Security diff review and sealed with
+zero CRITICAL, zero HIGH, and two MEDIUM evidence findings. This is independent
+Codex review work, not organizational independence or a substitute for a named
+external audit firm.
+
+The two MEDIUM Phase 5B blockers are:
+
+1. the production checker cannot prove all Solana values came from one exact
+   historical common slot; and
+2. the in-flight inventory is hashed and structurally validated, but its
+   external scanner, chain ranges, packet-status evidence, independence, and
+   completeness are not yet established.
 
 Accepted design risks: multisig governance can maliciously upgrade/reconfigure;
 Solana buckets measure net imbalance through cross-refill rather than strict
@@ -110,11 +129,12 @@ gross daily volume; EVM owner concentration permits pause griefing/unpause;
 Executor/DVN/sequencer availability and correctness remain external assumptions;
 and surplus-only Solana fee withdrawal remains callable while paused.
 
-Unresolved human decisions/blockers: Docker reproducibility, independent audit,
-Robinhood finality, current LayerZero metadata/DVN contracts, all production
-application and multisig addresses, signer/threshold/separation/recovery policy,
-pause-only guardian decision, fresh economic limits, monitored disclosure
-contact, and explicit Phase 5B authorization. See `PHASE_5A1_BLOCKERS.md` and
+Unresolved human decisions/blockers: the two MEDIUM evidence gaps above, Docker
+reproducibility, independent external audit, Robinhood finality, current
+LayerZero metadata/DVN contracts, all production application and multisig
+addresses, signer/threshold/separation/recovery policy, pause-only guardian
+decision, fresh economic limits, monitored disclosure contact, and explicit
+Phase 5B authorization. See `AUDIT_TARGET.md`, `PHASE_5A1_BLOCKERS.md`, and
 `AUDIT_SCOPE.md`.
 
 ## Runbooks

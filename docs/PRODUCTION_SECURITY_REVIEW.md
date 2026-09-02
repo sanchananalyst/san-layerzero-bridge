@@ -2,11 +2,21 @@
 
 ## Outcome
 
-A hostile Phase 5A.1 review of production contract/program code, configuration
-policy, task registration, deployment helpers, key handling, and custody
-invariants found no unresolved CRITICAL or HIGH code/tooling issue after the
-remediations below. This is not an independent audit and does not approve Phase
-5B or any transaction.
+A hostile Phase 5A.2 review of the exact public PR #2 range and merged
+production-code target
+`d28762288bb5180ff292f57eef7132191f2037ec` found no unresolved CRITICAL or
+HIGH issue. All 36 changed files were reviewed. Two MEDIUM evidence findings
+remain and block Phase 5B. This is independent Codex review work, not
+organizational independence or a substitute for a named external audit firm. It
+does not approve Phase 5B or any transaction.
+
+The previous audit target,
+`a53a86bcc0a18934a19f2889ba61ceb1633fa359`, is superseded because a fresh
+Solana OFT Store initialized unpaused. After a peer was configured, an ordinary
+holder could send during partial wiring before rate limits and the remaining
+controls were complete. PR #2 changed Solana initialization to paused, changed
+Robinhood construction to paused, added the production checker, and added the
+partial-configuration regression matrix.
 
 ## Threat model and controls
 
@@ -27,6 +37,9 @@ DVNs, wrong-chain operators, and developers accidentally invoking starter tasks.
   checksummed EVM identities, libraries, Executor, any-2-of-3 live DVNs, no Dead
   DVN, peers, enforced options, decimals, supply/TVL, all authorities, and all
   four rate limits. Missing approved values fail closed.
+- `PRE_ACTIVATION_INERT` requires both applications paused. Initial
+  `CANARY_ACTIVE` requires both unpaused and zero Store TVL, escrow balance,
+  Robinhood supply, in-flight amounts, and inventory entries. Mixed state fails.
 - Transaction-capable mainnet task paths are unregistered and central Solana and
   Robinhood send guards block before key loading. The Phase 5A.1 execution gate
   always throws; enabling Phase 5B requires a separately reviewed source change.
@@ -49,7 +62,20 @@ tasks are absent, wrong testnet IDs/RPC contexts fail, supplied outbound
 `dstEid` is honored, four limiters are mandatory, and intentionally bad policy
 fixtures are rejected.
 
+The activation guarantee is deliberately bounded. Both applications remain
+inert through wiring and handoff, but once Solana is unpaused last, any holder
+may bridge within the configured controls and may race the operator canary.
+
 ## Remaining risks and blockers
+
+- **MEDIUM evidence blocker:** Solana Store, peer, SPL, loader, registry, and
+  LayerZero state are gathered through multiple finalized calls. Repeated
+  equality and independent providers reduce risk but do not prove one exact
+  historical common-slot snapshot.
+- **MEDIUM evidence blocker:** the in-flight inventory parser authenticates
+  exact bytes and checks totals, but no independently reviewed scanner or signed
+  chain-range/pathway/packet-status artifact yet proves provenance and
+  completeness.
 
 - **HIGH operational blocker:** exact production Store/escrow/SanOFT/multisig
   identities do not yet exist; current LayerZero metadata must be refreshed and
@@ -69,4 +95,5 @@ fixtures are rejected.
   but cannot withdraw accounted TVL under reviewed code.
 
 No accepted risk is treated as launch authorization. Exact closure criteria are
-tracked in `docs/PHASE_5A1_BLOCKERS.md`.
+tracked in `docs/PHASE_5A1_BLOCKERS.md`; commit identity is recorded in
+`docs/AUDIT_TARGET.md`.
