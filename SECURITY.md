@@ -2,10 +2,12 @@
 
 ## Reporting a vulnerability
 
-Report suspected vulnerabilities privately to **SECURITY CONTACT PLACEHOLDER —
-REQUIRED BEFORE PUBLICATION**. The project owner must replace this placeholder
-with a monitored address before the repository is made public. Until then, the
-GitHub repository must remain private.
+Report suspected vulnerabilities through GitHub Private Vulnerability
+Reporting. If that flow is unavailable, contact
+[@SanChanSecurit](https://t.me/SanChanSecurit) by direct message only to
+establish a private reporting channel. Do not send vulnerability details in
+public Telegram channels, groups, or on X. For sensitive details sent through
+Telegram, request a Secret Chat first.
 
 Include, where possible:
 

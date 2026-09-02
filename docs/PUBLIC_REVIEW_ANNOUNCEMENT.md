@@ -1,9 +1,8 @@
 # Public Security Review Announcement Drafts
 
-> **DO NOT PUBLISH YET.** The GitHub repository remains private because the
-> responsible-disclosure contact is unresolved. Use these drafts only after the
-> repository visibility is independently verified as public and the security
-> contact has replaced the placeholder in `SECURITY.md`.
+> **DO NOT PUBLISH YET.** Use these drafts only after the recreated repository
+> is independently verified as public and GitHub Private Vulnerability
+> Reporting is enabled.
 
 ## Short X/Twitter draft
 

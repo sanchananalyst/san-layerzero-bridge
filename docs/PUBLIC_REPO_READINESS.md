@@ -5,10 +5,12 @@
 A scrubbed GitHub copy now exists at
 <https://github.com/sanchananalyst/san-layerzero-bridge> and has been verified
 through an authenticated fresh clone. It remains **PRIVATE**. The responsible-
-disclosure contact placeholder is unresolved, so the fail-closed publication
-gate prohibits switching the repository to public visibility. Private phase
-reports are excluded from every branch and tag and retained only as ignored
-local files.
+disclosure contact is resolved as
+[@SanChanSecurit](https://t.me/SanChanSecurit), with GitHub Private
+Vulnerability Reporting as the primary intake path. Publication remains blocked
+until the private repository is recreated from the scrubbed branch so obsolete
+report-bearing GitHub objects cannot become public. Private phase reports are
+excluded from every branch and tag and retained only as ignored local files.
 
 ## Phase 5A.1 baseline
 
@@ -32,15 +34,15 @@ Completed controls:
 
 Remaining publication gates:
 
-1. replace the responsible-disclosure contact placeholder in `SECURITY.md`;
-2. independently confirm both historical credentials are retired and check any
+1. independently confirm both historical credentials are retired and check any
    prior mirrors, archives, CI artifacts, forks, or clones;
-3. add repository-host secret scanning and protected-branch rules;
-4. obtain legal/license and LayerZero dependency/source-obligation review;
-5. close Docker reproducibility and independent security audit blockers;
-6. review the exact public archive to exclude the sensitive local bundle,
+2. add repository-host secret scanning and protected-branch rules;
+3. obtain legal/license and LayerZero dependency/source-obligation review;
+4. close Docker reproducibility and independent security audit blockers;
+5. review the exact public archive to exclude the sensitive local bundle,
    `.env`, ignored keys, logs, caches, and deployment workspaces; and
-7. separately authorize creation/push of a public remote.
+6. recreate the GitHub repository from the scrubbed branch and independently
+   verify the obsolete report-bearing commit is unavailable.
 
 Future deployment records may publish verified addresses and transaction/GUID
 evidence only after those events occur. This repository does not invent them.

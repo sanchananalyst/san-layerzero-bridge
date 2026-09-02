@@ -83,9 +83,11 @@ public disclosure. Do not post live exploit instructions, private keys, seed
 phrases, personal data, or sensitive infrastructure details in a public issue.
 No bug bounty is promised unless a separate written program says otherwise.
 
-> **Publication gate:** the responsible-disclosure contact in `SECURITY.md` is
-> currently a clearly marked placeholder. This repository must remain private
-> until the project owner replaces it with a monitored contact.
+> **Private disclosure:** use GitHub Private Vulnerability Reporting. If that
+> flow is unavailable, contact
+> [@SanChanSecurit](https://t.me/SanChanSecurit) by direct message only to
+> establish a private reporting channel. Never post vulnerability details in a
+> public Telegram channel or group, or on X.
 
 ## Architecture
 
@@ -189,7 +191,6 @@ Before Phase 5B, the project still requires at least:
 - fresh LayerZero metadata and DVN/Executor review;
 - final Squads/Safe identities, signer separation, and recovery policy;
 - fresh market/liquidity review of rate limits;
-- a monitored responsible-disclosure contact; and
 - a separate explicit authorization for every production transaction.
 
 See [Phase 5A.1 blockers](./docs/PHASE_5A1_BLOCKERS.md). No repository content
