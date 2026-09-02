@@ -1,6 +1,15 @@
 # Public Repository Readiness
 
-## Status
+## Phase 5A.2 status
+
+A scrubbed GitHub copy now exists at
+<https://github.com/sanchananalyst/san-layerzero-bridge> and has been verified
+through an authenticated fresh clone. It remains **PRIVATE**. The responsible-
+disclosure contact placeholder is unresolved, so the fail-closed publication
+gate prohibits switching the repository to public visibility. See
+`docs/PHASE_5A2_PUBLICATION_REPORT.md`.
+
+## Phase 5A.1 baseline
 
 The rewritten local repository is materially safer but **must not be made
 public in Phase 5A.1**. No remote is configured, nothing was pushed, and prior
