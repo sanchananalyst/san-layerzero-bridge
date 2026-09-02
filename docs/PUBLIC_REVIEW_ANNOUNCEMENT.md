@@ -1,8 +1,8 @@
 # Public Security Review Announcement Drafts
 
-> **DO NOT PUBLISH YET.** Use these drafts only after the recreated repository
-> is independently verified as public and GitHub Private Vulnerability
-> Reporting is enabled.
+> **PUBLICATION VERIFIED.** The recreated repository is public and GitHub
+> Private Vulnerability Reporting is enabled. These drafts have not been posted
+> automatically.
 
 ## Short X/Twitter draft
 

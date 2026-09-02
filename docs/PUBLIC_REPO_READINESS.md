@@ -2,15 +2,15 @@
 
 ## Phase 5A.2 status
 
-A scrubbed GitHub copy now exists at
+A recreated, scrubbed GitHub repository now exists at
 <https://github.com/sanchananalyst/san-layerzero-bridge> and has been verified
-through an authenticated fresh clone. It remains **PRIVATE**. The responsible-
-disclosure contact is resolved as
+through authenticated and anonymous checks. It is **PUBLIC**. The superseded
+report-bearing commit and report path are unavailable in the recreated
+repository. The responsible-disclosure contact is
 [@SanChanSecurit](https://t.me/SanChanSecurit), with GitHub Private
-Vulnerability Reporting as the primary intake path. Publication remains blocked
-until the private repository is recreated from the scrubbed branch so obsolete
-report-bearing GitHub objects cannot become public. Private phase reports are
-excluded from every branch and tag and retained only as ignored local files.
+Vulnerability Reporting enabled as the primary intake path. Private phase
+reports are excluded from every branch and tag and retained only as ignored
+local files.
 
 ## Phase 5A.1 baseline
 
@@ -25,24 +25,24 @@ Completed controls:
 - historical Solana keypair material was removed and the historical mnemonic
   replaced across all refs;
 - reflogs/unreachable objects were pruned and `git fsck` is clean;
-- Gitleaks 8.30.1 full-history scan has only two documented public-address false
-  positives;
+- Gitleaks reports no findings in the public branch history; the complete local
+  branch set has only two documented public-address false positives;
 - current tracked files contain no keypair/private-key material;
-- `.env`, generated keypairs, `target/`, and operator material are ignored; and
+- `.env`, generated keypairs, `target/`, and operator material are ignored;
+- GitHub secret scanning, push protection, dependency vulnerability alerts,
+  private vulnerability reporting, and default-branch protection are enabled;
+  and
 - canonical identity, source, architecture, tests, security/rate/governance
   models, future runbooks, vulnerability policy, and auditor scope are present.
 
-Remaining publication gates:
+## Post-publication and pre-mainnet follow-ups
 
 1. independently confirm both historical credentials are retired and check any
    prior mirrors, archives, CI artifacts, forks, or clones;
-2. add repository-host secret scanning and protected-branch rules;
-3. obtain legal/license and LayerZero dependency/source-obligation review;
-4. close Docker reproducibility and independent security audit blockers;
-5. review the exact public archive to exclude the sensitive local bundle,
-   `.env`, ignored keys, logs, caches, and deployment workspaces; and
-6. recreate the GitHub repository from the scrubbed branch and independently
-   verify the obsolete report-bearing commit is unavailable.
+2. obtain legal/license and LayerZero dependency/source-obligation review; and
+3. close Docker reproducibility, Robinhood finality, governance, current
+   LayerZero configuration, and independent security-audit blockers before any
+   Phase 5B authorization.
 
 Future deployment records may publish verified addresses and transaction/GUID
 evidence only after those events occur. This repository does not invent them.
