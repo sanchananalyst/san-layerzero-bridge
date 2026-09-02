@@ -60,6 +60,19 @@ It supersedes `a53a86bcc0a18934a19f2889ba61ceb1633fa359` because both bridge
 applications now initialize paused and the production activation checker and
 partial-configuration regressions are part of the reviewed code boundary.
 
+### Reproducible Solana artifact
+
+Phase 5A.3 produced two byte-identical verifiable builds of the immutable
+production-code audit target `d28762288bb5180ff292f57eef7132191f2037ec`.
+
+- ELF SHA-256: `b6c6a071143b263579e0d1313a7a9fe88c2a84024d42103c691ee8939d6ce543`
+- Executable hash: `5068a15a15899e96d2b9a2c331573d490f064f2cd84cf88f43314371ed7d33d6`
+- ELF size: `571,864` bytes
+
+See [`docs/PRODUCTION_VERIFIABLE_BUILD.md`](./docs/PRODUCTION_VERIFIABLE_BUILD.md)
+for the pinned image, exact build command, and reproducibility evidence.
+Independent artifact approval remains required before Phase 5B.
+
 The fail-closed change prevents bridging throughout incremental deployment,
 wiring, security configuration, and governance handoff. Activation is still a
 separate governance action: once both applications are unpaused, the bridge is
@@ -204,7 +217,8 @@ requires independent change review.
 
 Before Phase 5B, the project still requires at least:
 
-- a reproducible, digest-pinned Docker/verifiable Solana build;
+- independent approval of the reproducible Solana artifact and recorded
+  ELF/executable hashes;
 - independent review of the exact production commit and artifacts;
 - an approved Robinhood finality/confirmation policy;
 - fresh LayerZero metadata and DVN/Executor review;
