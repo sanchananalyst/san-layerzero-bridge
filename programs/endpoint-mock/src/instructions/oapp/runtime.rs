@@ -43,21 +43,129 @@ pub struct MockSend<'info> {
     pub sender: Signer<'info>,
     #[account(seeds = [OAPP_SEED, sender.key().as_ref()], bump = oapp_registry.bump)]
     pub oapp_registry: Account<'info, OAppRegistry>,
+    /// CHECK: fixed real Endpoint send-library-config position.
+    pub send_library_config: UncheckedAccount<'info>,
+    /// CHECK: fixed real Endpoint default-send-library-config position.
+    pub default_send_library_config: UncheckedAccount<'info>,
+    /// CHECK: fixed real Endpoint send-library-info position.
+    pub send_library_info: UncheckedAccount<'info>,
+    /// CHECK: fixed real Endpoint settings position.
+    pub endpoint: UncheckedAccount<'info>,
+    #[account(mut, seeds = [PACKET_COUNTER_SEED, sender.key().as_ref()], bump = packet_counter.bump)]
+    pub packet_counter: Account<'info, PacketCounter>,
 }
 
 impl MockSend<'_> {
-    pub fn apply(_ctx: &Context<MockSend>, params: &SendParams) -> Result<MessagingReceipt> {
+    pub fn apply(ctx: &mut Context<MockSend>, params: &SendParams) -> Result<MessagingReceipt> {
+        let registry = &ctx.accounts.oapp_registry;
+        require!(
+            registry.send_library_configured
+                && registry.receive_library_configured
+                && registry.send_uln_configured
+                && registry.receive_uln_configured
+                && registry.executor_configured,
+            MockEndpointError::IncompleteConfiguration
+        );
+        ctx.accounts.packet_counter.count = ctx
+            .accounts
+            .packet_counter
+            .count
+            .checked_add(1)
+            .ok_or(MockEndpointError::ArithmeticOverflow)?;
         let guid = hashv(&[
             &params.dst_eid.to_be_bytes(),
             &params.receiver,
             &params.message,
         ])
         .to_bytes();
+        msg!("MOCK_PACKET_CREATED count={}", ctx.accounts.packet_counter.count);
         Ok(MessagingReceipt {
             guid,
             nonce: 1,
             fee: MessagingFee { native_fee: 0, lz_token_fee: 0 },
         })
+    }
+}
+
+#[derive(Accounts)]
+pub struct SetMockConfig<'info> {
+    pub authority: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [OAPP_SEED, oapp.key().as_ref()],
+        bump = oapp_registry.bump,
+        constraint = oapp_registry.delegate == authority.key() @ MockEndpointError::Unauthorized
+    )]
+    pub oapp_registry: Account<'info, OAppRegistry>,
+    /// CHECK: identifies the registered OApp whose PDA seeds the registry.
+    pub oapp: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct InitMockPacketCounter<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    #[account(
+        seeds = [OAPP_SEED, oapp.key().as_ref()],
+        bump = oapp_registry.bump,
+        constraint = oapp_registry.delegate == authority.key() @ MockEndpointError::Unauthorized
+    )]
+    pub oapp_registry: Account<'info, OAppRegistry>,
+    /// CHECK: identifies the registered OApp whose PDA seeds the counter.
+    pub oapp: UncheckedAccount<'info>,
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + PacketCounter::INIT_SPACE,
+        seeds = [PACKET_COUNTER_SEED, oapp.key().as_ref()],
+        bump
+    )]
+    pub packet_counter: Account<'info, PacketCounter>,
+    pub system_program: Program<'info, System>,
+}
+
+impl InitMockPacketCounter<'_> {
+    pub fn apply(ctx: &mut Context<InitMockPacketCounter>) -> Result<()> {
+        ctx.accounts.packet_counter.count = 0;
+        ctx.accounts.packet_counter.bump = ctx.bumps.packet_counter;
+        Ok(())
+    }
+}
+
+impl SetMockConfig<'_> {
+    pub fn apply(ctx: &mut Context<SetMockConfig>, params: &SetMockConfigParams) -> Result<()> {
+        let registry = &mut ctx.accounts.oapp_registry;
+        registry.send_library_configured = params.send_library_configured;
+        registry.receive_library_configured = params.receive_library_configured;
+        registry.send_uln_configured = params.send_uln_configured;
+        registry.receive_uln_configured = params.receive_uln_configured;
+        registry.executor_configured = params.executor_configured;
+        Ok(())
+    }
+}
+
+/// Test-only account layout matching the six fixed accounts consumed by the
+/// real Endpoint quote CPI. No production Endpoint behavior is modeled here;
+/// the mock returns a deterministic zero fee after the OFT pause guard.
+#[derive(Accounts)]
+pub struct MockQuote<'info> {
+    /// CHECK: fixed Endpoint quote position; test mock does not inspect it.
+    pub send_library_program: UncheckedAccount<'info>,
+    /// CHECK: fixed Endpoint quote position; test mock does not inspect it.
+    pub send_library_config: UncheckedAccount<'info>,
+    /// CHECK: fixed Endpoint quote position; test mock does not inspect it.
+    pub default_send_library_config: UncheckedAccount<'info>,
+    /// CHECK: fixed Endpoint quote position; test mock does not inspect it.
+    pub send_library_info: UncheckedAccount<'info>,
+    /// CHECK: fixed Endpoint quote position; test mock does not inspect it.
+    pub endpoint: UncheckedAccount<'info>,
+    /// CHECK: fixed Endpoint quote position; test mock does not inspect it.
+    pub nonce: UncheckedAccount<'info>,
+}
+
+impl MockQuote<'_> {
+    pub fn apply(_ctx: &Context<MockQuote>, _params: &QuoteParams) -> Result<MessagingFee> {
+        Ok(MessagingFee::default())
     }
 }
 
@@ -118,6 +226,25 @@ pub struct SendParams {
 }
 
 #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
+pub struct SetMockConfigParams {
+    pub send_library_configured: bool,
+    pub receive_library_configured: bool,
+    pub send_uln_configured: bool,
+    pub receive_uln_configured: bool,
+    pub executor_configured: bool,
+}
+
+#[derive(Clone, AnchorSerialize, AnchorDeserialize)]
+pub struct QuoteParams {
+    pub sender: Pubkey,
+    pub dst_eid: u32,
+    pub receiver: [u8; 32],
+    pub message: Vec<u8>,
+    pub options: Vec<u8>,
+    pub pay_in_lz_token: bool,
+}
+
+#[derive(Clone, AnchorSerialize, AnchorDeserialize)]
 pub struct ClearParams {
     pub receiver: Pubkey,
     pub src_eid: u32,
@@ -148,4 +275,8 @@ pub enum MockEndpointError {
     InvalidMessage,
     #[msg("Authenticated mock Endpoint message was already consumed")]
     AlreadyConsumed,
+    #[msg("Mock Endpoint pathway configuration is incomplete")]
+    IncompleteConfiguration,
+    #[msg("Mock Endpoint arithmetic overflow")]
+    ArithmeticOverflow,
 }

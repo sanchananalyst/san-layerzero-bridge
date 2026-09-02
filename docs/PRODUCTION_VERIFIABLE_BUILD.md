@@ -1,5 +1,10 @@
 # Production Verifiable Solana Build
 
+> **Superseded by Phase 5A.2:** the local hashes below were produced before the
+> Store default changed to `paused = true`. They must not be used as approved
+> deployment hashes. The next authorized reproducible-build phase must produce
+> and independently reproduce the patched ELF/executable hashes.
+
 ## Status
 
 The local pinned build succeeds, but a Docker/verifiable and independently

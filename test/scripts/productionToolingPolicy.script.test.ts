@@ -31,7 +31,7 @@ describe('production transaction-tooling dry runs', () => {
         expect(() => requireFutureMainnetExecution(undefined)).toThrow('disabled')
         expect(() => requireFutureMainnetExecution('PHASE_5A')).toThrow('disabled')
         expect(() => requireFutureMainnetExecution('PHASE_5B_EXPLICITLY_AUTHORIZED')).toThrow(
-            'structurally disabled in the Phase 5A.1 revision'
+            'structurally disabled in the Phase 5A revision'
         )
     })
 

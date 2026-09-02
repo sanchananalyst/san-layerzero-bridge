@@ -58,7 +58,9 @@ impl InitOFT<'_> {
         ctx.accounts.oft_store.tvl_ld = 0;
         ctx.accounts.oft_store.admin = params.admin;
         ctx.accounts.oft_store.default_fee_bps = 0;
-        ctx.accounts.oft_store.paused = false;
+        // New Stores must remain inert through peer, Endpoint, limiter, and
+        // authority configuration. Activation is an explicit later action.
+        ctx.accounts.oft_store.paused = true;
         ctx.accounts.oft_store.pauser = None;
         ctx.accounts.oft_store.unpauser = None;
 

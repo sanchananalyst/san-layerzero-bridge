@@ -86,7 +86,16 @@ All addresses, bytecode, hashes, multisig thresholds, and proposal calldata must
 8. Transfer the Solana program upgrade authority to the same verified multisig vault PDA. Read the loader state back and prove the deployer is no longer authority.
 9. Deploy `SanOFT` with `<ROBINHOOD_SAN_SAFE>` as `delegate_`, making the Safe owner and delegate immediately. If and only if temporary ownership is unavoidable, execute `setDelegate(Safe)` then `transferOwnership(Safe)` and read both back.
 10. From both multisigs, execute harmless/read-only governance drills and prepare—but do not yet exercise—the pause/rollback procedures.
-11. Independently verify all five deployer-removal conditions, archive the signed evidence, and require a human go/no-go before unpausing or accepting deposits.
+11. Independently derive the Squads vault and Safe address, then inspect and
+    approve each multisig's exact threshold, complete owner/member set, enabled
+    modules, guards, fallback handler, recovery path, and proposal-execution
+    drill. An address-only match is insufficient.
+12. Independently verify every deployer-removal condition, supply every
+    deployer/bootstrap public identity to the checker forbidden lists, and
+    require `PRE_ACTIVATION_INERT` to pass from two RPC provider pairs.
+13. Archive the signed evidence. Unpause is a distinct later activation ceremony;
+    a human go/no-go must identify the exact two governance actions and the
+    checker must reject the intermediate one-sided state.
 
 ## Phase 5A.1 local simulation result
 
@@ -156,3 +165,8 @@ Expected for both: `<ROBINHOOD_SAN_SAFE>`. Separately inspect the Safe threshold
 - `SanOFT` owner can change peers, delegate, enforced options, and other inherited configuration. It cannot call an arbitrary mint function because none exists, but malicious peer/security settings can cause standard authenticated credit.
 
 Multisigs reduce single-key risk, not malicious-governance risk. Thresholds, signer independence, key custody, proposal delay, emergency powers, monitoring, and incident response remain human decisions.
+
+The production checker validates that on-chain roles equal approved addresses
+and differ from enumerated bootstrap identities. It cannot infer a Squads/Safe
+threshold or prove signer independence from those role addresses. The signed
+multisig-state evidence above is therefore a separate mandatory Phase 5B gate.

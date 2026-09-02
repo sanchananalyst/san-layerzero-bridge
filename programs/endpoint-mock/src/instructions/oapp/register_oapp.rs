@@ -24,6 +24,11 @@ pub struct RegisterOApp<'info> {
 impl RegisterOApp<'_> {
     pub fn apply(ctx: &mut Context<RegisterOApp>, params: &RegisterOAppParams) -> Result<()> {
         ctx.accounts.oapp_registry.delegate = params.delegate;
+        ctx.accounts.oapp_registry.send_library_configured = false;
+        ctx.accounts.oapp_registry.receive_library_configured = false;
+        ctx.accounts.oapp_registry.send_uln_configured = false;
+        ctx.accounts.oapp_registry.receive_uln_configured = false;
+        ctx.accounts.oapp_registry.executor_configured = false;
         ctx.accounts.oapp_registry.bump = ctx.bumps.oapp_registry;
         Ok(())
     }

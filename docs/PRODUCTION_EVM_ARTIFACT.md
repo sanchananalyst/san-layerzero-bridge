@@ -1,5 +1,10 @@
 # Production EVM Artifact
 
+> **Superseded by Phase 5A.2:** the hashes below describe the pre-fail-closed
+> constructor and are retained only as historical evidence. Adding the default
+> `_pause()` changes creation and runtime bytecode. New reproducible hashes and
+> independent review are required before deployment.
+
 ## Build identity
 
 The production contract is non-upgradeable `SanOFT`, configured at deployment
@@ -30,7 +35,9 @@ accepts the current LayerZero Endpoint and the approved Safe as delegate/owner.
 - ownership renunciation is disabled; and
 - the canary bucket is `500,000 SAN`, not the superseded 100k value.
 
-Hardhat (21 tests) and Foundry (16 tests) cover constructor identity,
+The pre-patch Hardhat (21 tests) and Foundry (16 tests) results below are
+historical. The Phase 5A.2 validation report records the patched suite. These
+tests cover constructor identity,
 authentication, burn/credit, pause behavior, limiter boundaries/refill/rollback,
 owner authorization, disabled renunciation, malformed messages, and absence of
 an arbitrary emergency mint path.

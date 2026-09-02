@@ -4,6 +4,18 @@ use crate::*;
 #[derive(InitSpace)]
 pub struct OAppRegistry {
     pub delegate: Pubkey,
+    pub send_library_configured: bool,
+    pub receive_library_configured: bool,
+    pub send_uln_configured: bool,
+    pub receive_uln_configured: bool,
+    pub executor_configured: bool,
+    pub bump: u8,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct PacketCounter {
+    pub count: u64,
     pub bump: u8,
 }
 
