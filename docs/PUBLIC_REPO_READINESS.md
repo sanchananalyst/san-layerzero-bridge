@@ -7,10 +7,11 @@ A recreated, scrubbed GitHub repository now exists at
 through authenticated and anonymous checks. It is **PUBLIC**. The superseded
 report-bearing commit and report path are unavailable in the recreated
 repository. The responsible-disclosure contact is
-[@SanChanSecurit](https://t.me/SanChanSecurit), with GitHub Private
-Vulnerability Reporting enabled as the primary intake path. Private phase
-reports are excluded from every branch and tag and retained only as ignored
-local files.
+[@SanChanSecurity](https://t.me/SanChanSecurity), with
+[@SanChanRun](https://x.com/SanChanRun) on X for public coordination and GitHub
+Private Vulnerability Reporting enabled as the primary intake path. Private
+phase reports are excluded from every branch and tag and retained only as
+ignored local files.
 
 ## Phase 5A.1 baseline
 

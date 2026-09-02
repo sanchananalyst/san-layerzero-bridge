@@ -85,9 +85,10 @@ No bug bounty is promised unless a separate written program says otherwise.
 
 > **Private disclosure:** use GitHub Private Vulnerability Reporting. If that
 > flow is unavailable, contact
-> [@SanChanSecurit](https://t.me/SanChanSecurit) by direct message only to
-> establish a private reporting channel. Never post vulnerability details in a
-> public Telegram channel or group, or on X.
+> [@SanChanSecurity](https://t.me/SanChanSecurity) by Telegram direct message to
+> establish a private reporting channel. For public coordination only, contact
+> [@SanChanRun](https://x.com/SanChanRun) on X. Never send vulnerability details
+> through X or public Telegram channels or groups.
 
 ## Architecture
 

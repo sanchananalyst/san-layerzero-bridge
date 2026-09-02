@@ -4,10 +4,11 @@
 
 Report suspected vulnerabilities through GitHub Private Vulnerability
 Reporting. If that flow is unavailable, contact
-[@SanChanSecurit](https://t.me/SanChanSecurit) by direct message only to
-establish a private reporting channel. Do not send vulnerability details in
-public Telegram channels, groups, or on X. For sensitive details sent through
-Telegram, request a Secret Chat first.
+[@SanChanSecurity](https://t.me/SanChanSecurity) by Telegram direct message to
+establish a private reporting channel. For public coordination only, contact
+[@SanChanRun](https://x.com/SanChanRun) on X. Do not send vulnerability details
+through X or public Telegram channels or groups. For sensitive details sent
+through Telegram, request a Secret Chat first.
 
 Include, where possible:
 
