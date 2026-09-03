@@ -1,78 +1,67 @@
-# Robinhood Mainnet Finality Policy
+# Robinhood Mainnet Source-Confirmation Policy
 
-## Decision
+## Frozen Phase 5A.4 policy
 
-Robinhood-source LayerZero confirmations remain **unapproved and fail-closed**.
-No single count of fast Robinhood L2 blocks demonstrates Ethereum economic
-finality. A human security decision must state which sequencer, DVN, L1-posting,
-and challenge-period risks are accepted before a positive value is inserted.
+The approved/proposed production pathway policy is:
 
-## What the stages mean
+| Source pathway            | Source-chain confirmations |
+| ------------------------- | -------------------------: |
+| Robinhood Chain to Solana | **30 Robinhood L2 blocks** |
+| Solana to Robinhood Chain |       **32 Solana blocks** |
 
-1. **L2 inclusion:** Robinhood's sequencer orders a transaction into a fast L2
-   block. This is useful operational evidence, not Ethereum finality.
-2. **Sequencer behavior and L2 reorgs:** prior to durable L1 anchoring, the
-   security assumption includes sequencer ordering/availability and the Nitro
-   node model. More L2 blocks mainly add soft depth under that model.
-3. **Posting to Ethereum:** Nitro batches L2 transaction data/state commitments
-   to L1 asynchronously. An L2 block's exposed `l1BlockNumber` alone does not
-   prove that its batch was posted or finalized.
-4. **Ethereum safe/finalized:** after posting, L1 consensus safe/finalized status
-   is a separate clock. It must be observed through the rollup/DVN system, not
-   approximated by an L2-block count.
-5. **Optimistic challenge:** L1 posting/finality does not erase the optimistic
-   fraud-proof/challenge model. The withdrawal/challenge horizon is materially
-   longer than ordinary messaging latency.
-6. **LayerZero confirmations:** ULN `confirmations` is a source-chain block-depth
-   value used by DVNs before verification. It does not itself express “wait for
-   this Nitro batch to be L1 posted, Ethereum-finalized, and challenge-complete.”
+The word “confirmations” here has LayerZero ULN's source-chain block-depth
+meaning. **Thirty Robinhood confirmations are L2 block-depth/reorg mitigation;
+they are not Ethereum finality, Nitro challenge-period completion, or a
+guarantee that the relevant batch has been posted to and finalized on
+Ethereum.** This policy must never be described as “finality guaranteed.”
 
-Official references: [Robinhood Chain overview](https://docs.robinhood.com/chain/),
-[connecting](https://docs.robinhood.com/chain/connecting/),
-[full node](https://docs.robinhood.com/chain/run-a-full-node/),
-[bridging](https://docs.robinhood.com/chain/bridging/),
-[Arbitrum Nitro whitepaper](https://docs.arbitrum.io/nitro-whitepaper.pdf),
-[Ethereum Gasper/finality](https://ethereum.org/developers/docs/consensus-mechanisms/pos/gasper/),
-and [LayerZero production DVN guidance](https://docs.layerzero.network/v2/concepts/modular-security/production-dvn-configuration).
+## Empirical basis
 
-## Phase 5A.3 re-verification (2026-09-03)
+The read-only study in `ROBINHOOD_FINALITY_EVIDENCE.md` sampled 1,024 contiguous
+Robinhood mainnet blocks and ten consecutive Nitro batches. In that sample:
 
-Current Robinhood documentation still identifies mainnet chain ID `4663`, an
-Arbitrum Nitro dedicated chain with a first-come-first-served sequencer, Ethereum
-blob posting, Nitro `v3.11.2` full-node guidance, permissioned BoLD validators,
-and an approximately seven-day canonical withdrawal horizon. A read-only call to
-the public RPC accepted `eth_getBlockByNumber("finalized")` and returned a block
-number and hash. The production checker now anchors its EVM observation to that
-tag.
+- 30 L2 confirmations took approximately 3 seconds median and 4 seconds p95;
+- L2-to-Ethereum batch posting took approximately 23.5 minutes median; and
+- L2-to-observed Ethereum finality took approximately 40.3 minutes median.
 
-That RPC tag is useful coherent-state evidence; it is not documented proof that
-the corresponding assertion has completed Ethereum posting, L1 finality, and
-the optimistic challenge horizon. Current LayerZero guidance still defines ULN
-`confirmations` as source-chain block depth and gives only general optimistic-L2
-guidance. Therefore none of `32`, `64`, or `128` is approved by this review.
-Governance and LayerZero/DVN operators must explicitly document the accepted
-sequencer, posting, validator, L1-finality, and challenge assumptions before the
-checker input can be approved.
+The large difference between seconds of L2 depth and tens of minutes of
+observed L1 settlement is the central limitation. The 30-block value is a
+deliberate low-latency L2 source-depth choice supported by the observed sample;
+it is not a substitute for L1-aware risk controls. Measurements are not an SLA
+and must be refreshed when chain or DVN behavior changes.
 
-## Candidate depths and observed latency
+## Security interpretation
 
-Read-only RPC sampling near Robinhood block 51,910,050 observed approximately
-0.10 seconds per L2 block. Conditions can change; these are measurements, not
-SLAs.
+More fast L2 blocks add mechanical depth against shallow Robinhood reorgs under
+the current sequencer/node model. They do not prove that the corresponding
+Nitro batch is available on L1, that an assertion is Ethereum-finalized, or that
+the optimistic dispute horizon has elapsed. LayerZero DVNs independently decide
+when their verification conditions are met; the repository does not prove that
+each DVN maps `30` to the same L1-aware settlement semantics.
 
-| Candidate | Approximate sampled L2 delay | Security interpretation                                           |
-| --------: | ---------------------------: | ----------------------------------------------------------------- |
-|        32 |                    4 seconds | shallow soft confirmation only                                    |
-|        64 |                    7 seconds | deeper soft confirmation only                                     |
-|       128 |                   13 seconds | preferred provisional soft-depth candidate, still not L1 finality |
-|     1,000 |                  102 seconds | still not a semantic proof of batch posting/finality              |
-|    10,000 |                1,010 seconds | still not the fraud-proof challenge period                        |
+The policy therefore retains these residual assumptions:
 
-If governance explicitly accepts a sequencer/DVN soft-confirmation security
-model, `128` is the recommended provisional LayerZero value because its small
-latency cost materially exceeds 32/64 in L2 depth. It remains unapproved here.
-If policy instead requires L1 posting/finalized or challenge-complete semantics,
-the requirement must be implemented and monitored outside the numeric
-confirmation field or confirmed as a supported DVN behavior. The production
-checker therefore requires an explicit non-null approved value and currently
-rejects configuration.
+- Robinhood sequencer correctness and availability;
+- Robinhood L2 reorg behavior, including depths absent from the sample;
+- timely and correct Nitro batch posting;
+- Ethereum consensus and finality after posting;
+- rollup state correctness and the optimistic challenge process;
+- independent, correct LayerZero Labs, Nethermind, and Horizen DVN behavior;
+- uncompromised governance and exact configuration execution;
+- complete monitoring of delivery, reorg, posting, accounting, and liveness;
+- a timely pause response before the applicable bucket can be exhausted.
+
+The pathway uses 2-of-3 DVNs to reduce reliance on one verifier, but correlated
+DVN, sequencer, rollup, governance, or monitoring failures remain possible.
+
+## Operational requirements
+
+The production checker must observe exact explicit ULN settings: Robinhood send
+and Solana receive use 30; Solana send and Robinhood receive use 32. Missing,
+inherited, reversed, or different values fail closed. Activation remains blocked
+until independent reviewers accept the limitations above, current metadata and
+DVN contracts are rechecked, monitoring/pause procedures are staffed, and all
+other Phase 5B gates pass.
+
+Official background references and the reproducible measurement method are
+listed in `ROBINHOOD_FINALITY_EVIDENCE.md`.

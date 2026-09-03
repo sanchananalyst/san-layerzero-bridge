@@ -15,7 +15,7 @@ import {
     ProductionRateLimitProfile,
     validateProductionRateLimitPlan,
 } from './productionRateLimitPolicy'
-import { CANONICAL_SAN_MINT, LEGACY_SPL_TOKEN_PROGRAM } from './sanMintConfig'
+import { CANONICAL_SAN_MINT, LEGACY_SPL_TOKEN_PROGRAM, SOLANA_MAINNET_GENESIS_HASH } from './sanMintConfig'
 import { SOLANA_OBSERVATION_MODEL, SolanaCommonContextEvidence } from './solanaCommonContext'
 
 export const PRODUCTION_SOLANA_ENDPOINT = '76y77prsiCMvXMjuoZ5VRrhG5qYBrUMYTE5WgHqgjEn6'
@@ -52,6 +52,12 @@ export interface ApprovedProductionState extends ProductionAuthorityPolicy {
     forbiddenRobinhoodBootstrapAuthorities: string[]
     expectedSolanaProgramData: string
     expectedSolanaProgramDataSha256: string
+    expectedSolanaEndpointProgramData: string
+    expectedSolanaEndpointProgramDataSha256: string
+    expectedSolanaEndpointUpgradeAuthority: string
+    expectedSolanaUlnProgramData: string
+    expectedSolanaUlnProgramDataSha256: string
+    expectedSolanaUlnUpgradeAuthority: string
     expectedRobinhoodRuntimeCodeHash: string
     expectedInFlight: {
         inventoryId: string
@@ -69,6 +75,7 @@ export interface ApprovedProductionState extends ProductionAuthorityPolicy {
 export interface ProductionMainnetObservation {
     solana: {
         eid: number
+        genesisHash: string
         mint: string
         tokenProgram: string
         decimals: number
@@ -95,6 +102,16 @@ export interface ProductionMainnetObservation {
         programDataSha256: string
         programDataOwner: string
         programDataExecutable: boolean
+        endpointProgramData: string
+        endpointProgramDataSha256: string
+        endpointUpgradeAuthority: string
+        endpointProgramDataOwner: string
+        endpointProgramDataExecutable: boolean
+        ulnProgramData: string
+        ulnProgramDataSha256: string
+        ulnUpgradeAuthority: string
+        ulnProgramDataOwner: string
+        ulnProgramDataExecutable: boolean
         escrowProgramOwner: string
         escrowMint: string
         escrowAuthority: string
@@ -158,7 +175,9 @@ const validateSolanaContextEvidence = (evidence: SolanaCommonContextEvidence): v
         'production OFT program',
         'production OFT ProgramData',
         'LayerZero Endpoint program',
+        'LayerZero Endpoint ProgramData',
         'LayerZero ULN302 program',
+        'LayerZero ULN302 ProgramData',
         'Endpoint OApp registry',
         'Endpoint default send-library config',
         'Endpoint app send-library config',
@@ -233,6 +252,9 @@ const validateApprovedState = (approved: ApprovedProductionState): void => {
     if (approved.robinhoodSourceConfirmations <= 0n) {
         throw new Error('Approved Robinhood-source confirmations must be positive')
     }
+    if (approved.robinhoodSourceConfirmations !== SAN_LAYERZERO_POLICY.robinhoodSourceConfirmations) {
+        throw new Error('Approved Robinhood-source confirmations must equal the frozen 30-block policy')
+    }
     for (const [label, value] of [
         ['approved Solana OFT Store', approved.solanaOftStore],
         ['approved Solana escrow', approved.solanaEscrow],
@@ -242,6 +264,10 @@ const validateApprovedState = (approved: ApprovedProductionState): void => {
         ['approved Solana pauser', approved.solanaPauser],
         ['approved Solana unpauser', approved.solanaUnpauser],
         ['approved Solana ProgramData', approved.expectedSolanaProgramData],
+        ['approved LayerZero Endpoint ProgramData', approved.expectedSolanaEndpointProgramData],
+        ['approved LayerZero Endpoint upgrade authority', approved.expectedSolanaEndpointUpgradeAuthority],
+        ['approved LayerZero ULN302 ProgramData', approved.expectedSolanaUlnProgramData],
+        ['approved LayerZero ULN302 upgrade authority', approved.expectedSolanaUlnUpgradeAuthority],
     ] as const) {
         requireSolanaAddress(value, label)
     }
@@ -249,6 +275,8 @@ const validateApprovedState = (approved: ApprovedProductionState): void => {
     requireEvmAddress(approved.robinhoodOwner, 'approved Robinhood owner')
     requireEvmAddress(approved.robinhoodDelegate, 'approved Robinhood delegate')
     requireHash(approved.expectedSolanaProgramDataSha256, 'approved Solana ProgramData SHA-256')
+    requireHash(approved.expectedSolanaEndpointProgramDataSha256, 'approved LayerZero Endpoint ProgramData SHA-256')
+    requireHash(approved.expectedSolanaUlnProgramDataSha256, 'approved LayerZero ULN302 ProgramData SHA-256')
     requireHash(approved.expectedRobinhoodRuntimeCodeHash, 'approved Robinhood runtime code hash')
     requireHash(approved.expectedInFlight.inventorySha256, 'approved in-flight inventory SHA-256')
     if (!/^[0-9a-f]{40}$/.test(approved.expectedInFlight.scannerSourceCommit)) {
@@ -302,6 +330,9 @@ export function validateProductionMainnetObservation(
     validateSolanaContextEvidence(observation.solanaContext)
 
     if (observation.solana.eid !== MAINNET_CONFIG.solana.eid) throw new Error('Solana EID is not 30168')
+    if (observation.solana.genesisHash !== SOLANA_MAINNET_GENESIS_HASH) {
+        throw new Error('Solana observation is not bound to the mainnet genesis hash')
+    }
     if (observation.robinhood.chainId !== MAINNET_CONFIG.robinhood.chainId) {
         throw new Error('Robinhood chainId is not 4663')
     }
@@ -336,6 +367,56 @@ export function validateProductionMainnetObservation(
     requireHash(observation.solana.programDataSha256, 'observed Solana ProgramData SHA-256')
     if (observation.solana.programDataSha256.toLowerCase() !== approved.expectedSolanaProgramDataSha256.toLowerCase()) {
         throw new Error('Solana ProgramData hash differs from the approved reproducible artifact')
+    }
+    equalSolanaAddress(
+        observation.solana.endpointProgramData,
+        approved.expectedSolanaEndpointProgramData,
+        'LayerZero Endpoint ProgramData'
+    )
+    requireHash(observation.solana.endpointProgramDataSha256, 'observed LayerZero Endpoint ProgramData SHA-256')
+    if (
+        observation.solana.endpointProgramDataSha256.toLowerCase() !==
+        approved.expectedSolanaEndpointProgramDataSha256.toLowerCase()
+    ) {
+        throw new Error('LayerZero Endpoint executable hash differs from the approved artifact')
+    }
+    equalSolanaAddress(
+        observation.solana.endpointUpgradeAuthority,
+        approved.expectedSolanaEndpointUpgradeAuthority,
+        'LayerZero Endpoint upgrade authority'
+    )
+    equalSolanaAddress(
+        observation.solana.endpointProgramDataOwner,
+        SOLANA_UPGRADEABLE_LOADER,
+        'LayerZero Endpoint ProgramData owner'
+    )
+    if (observation.solana.endpointProgramDataExecutable) {
+        throw new Error('LayerZero Endpoint ProgramData account must not be executable')
+    }
+    equalSolanaAddress(
+        observation.solana.ulnProgramData,
+        approved.expectedSolanaUlnProgramData,
+        'LayerZero ULN302 ProgramData'
+    )
+    requireHash(observation.solana.ulnProgramDataSha256, 'observed LayerZero ULN302 ProgramData SHA-256')
+    if (
+        observation.solana.ulnProgramDataSha256.toLowerCase() !==
+        approved.expectedSolanaUlnProgramDataSha256.toLowerCase()
+    ) {
+        throw new Error('LayerZero ULN302 executable hash differs from the approved artifact')
+    }
+    equalSolanaAddress(
+        observation.solana.ulnUpgradeAuthority,
+        approved.expectedSolanaUlnUpgradeAuthority,
+        'LayerZero ULN302 upgrade authority'
+    )
+    equalSolanaAddress(
+        observation.solana.ulnProgramDataOwner,
+        SOLANA_UPGRADEABLE_LOADER,
+        'LayerZero ULN302 ProgramData owner'
+    )
+    if (observation.solana.ulnProgramDataExecutable) {
+        throw new Error('LayerZero ULN302 ProgramData account must not be executable')
     }
     equalSolanaAddress(observation.solana.escrowProgramOwner, LEGACY_SPL_TOKEN_PROGRAM, 'escrow token program owner')
     equalSolanaAddress(observation.solana.escrowMint, CANONICAL_SAN_MINT, 'escrow mint')

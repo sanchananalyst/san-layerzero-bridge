@@ -11,8 +11,9 @@ contain the both-chain fail-closed activation patch or its checker/regressions.
 
 The later `Update audit target after fail-closed activation fix` commit is
 documentation-only and does not change this production-code boundary. Any later
-production-code, dependency-resolution, compiler/build-setting, or policy change
-creates a new audit target and requires change review.
+production-code, dependency-resolution, or compiler/build-setting change
+creates a new bridge-code audit target. Phase 5A.4 policy/checker changes are a
+separate review target and do not modify production bridge bytecode.
 
 ## Production source and dependency boundary
 
@@ -79,8 +80,9 @@ that their IDs/RPCs cannot cross into the production registry or policy.
   `test/mocks/OFTComposerMock.sol` only as test isolation/support
 - `docs/ARCHITECTURE.md`, `ESCROW_SECURITY_REVIEW.md`,
   `PARTIAL_CONFIGURATION_SECURITY.md`, `PRODUCTION_ACTIVATION_CHECKER.md`,
-  `PRODUCTION_SECURITY_REVIEW.md`, `PRODUCTION_RATE_LIMITS.md`,
-  `ROBINHOOD_FINALITY_POLICY.md`, `PRODUCTION_GOVERNANCE.md`,
+  `PRODUCTION_SECURITY_REVIEW.md`, `FINAL_RATE_LIMIT_ANALYSIS.md`,
+  `PRODUCTION_RATE_LIMIT_POLICY.md`, `PRODUCTION_CONFIGURATION.md`,
+  `ROBINHOOD_FINALITY_EVIDENCE.md`, `ROBINHOOD_FINALITY_POLICY.md`, `PRODUCTION_GOVERNANCE.md`,
   `AUTHORITY_HANDOFF.md`, and all three mainnet runbooks/checklist.
 
 Verify source-to-artifact equivalence against the hashes in
@@ -107,4 +109,11 @@ dual-RPC range-complete in-flight scanner emits a source-commit-bound schema-v2
 manifest. Review these tooling changes as a separate diff target; they do not
 change the immutable bridge code target. Docker reproducibility passes; live
 pre-deployment evidence, independent hash approval, external audit, and
-Robinhood finality still block Phase 5B.
+independent acceptance of Robinhood source-depth limitations still block Phase
+5B.
+
+Phase 5A.4 freezes 32 Solana-source and 30 Robinhood-source confirmations and
+four rate tiers. Review the activation-race fix, reproducible build, testnet
+round trip, current metadata refresh, Solana full-bucket capacity reset, and the
+checker trust-root/genesis/packet-destination hardening together with the frozen
+bridge target.

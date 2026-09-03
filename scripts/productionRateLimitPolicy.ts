@@ -2,7 +2,17 @@ export const PRODUCTION_RATE_LIMIT_PROFILES = Object.freeze({
     canary: Object.freeze({ capacity: 500_000_000_000n, refillPerSecond: 5_787_037n }),
     publicLaunch: Object.freeze({ capacity: 30_000_000_000_000n, refillPerSecond: 347_222_222n }),
     normal: Object.freeze({ capacity: 50_000_000_000_000n, refillPerSecond: 578_703_703n }),
+    mature: Object.freeze({ capacity: 100_000_000_000_000n, refillPerSecond: 1_157_407_407n }),
 })
+
+export type ProductionRateLimitProfileName = keyof typeof PRODUCTION_RATE_LIMIT_PROFILES
+
+export const productionRateLimitProfile = (name: string): ProductionRateLimitProfile => {
+    if (!Object.prototype.hasOwnProperty.call(PRODUCTION_RATE_LIMIT_PROFILES, name)) {
+        throw new Error('Production rate-limit profile must be one of: canary, publicLaunch, normal, mature')
+    }
+    return PRODUCTION_RATE_LIMIT_PROFILES[name as ProductionRateLimitProfileName]
+}
 
 export interface DirectionalRateLimit {
     capacity: bigint

@@ -1,5 +1,7 @@
 import { createHash } from 'crypto'
 
+import { SOLANA_MAINNET_GENESIS_HASH } from './sanMintConfig'
+
 export const IN_FLIGHT_SCHEMA_VERSION = 2 as const
 export const IN_FLIGHT_SCANNER_NAME = 'scanProductionInFlight' as const
 export const IN_FLIGHT_SCANNER_VERSION = '1.0.0' as const
@@ -172,7 +174,9 @@ const validateRange = (manifest: InFlightManifest): void => {
     if (!solana.complete || !solana.paginationComplete || !robinhood.complete || !robinhood.paginationComplete) {
         throw new Error('In-flight scanner range or pagination is incomplete')
     }
-    nonempty(solana.genesisHash, 'Solana genesis hash')
+    if (nonempty(solana.genesisHash, 'Solana genesis hash') !== SOLANA_MAINNET_GENESIS_HASH) {
+        throw new Error('In-flight manifest is not bound to the Solana mainnet genesis hash')
+    }
     nonempty(solana.startBlockhash, 'Solana start blockhash')
     nonempty(solana.endBlockhash, 'Solana end blockhash')
     hash32(robinhood.startBlockHash, 'Robinhood start block hash')

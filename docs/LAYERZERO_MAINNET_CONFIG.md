@@ -2,7 +2,7 @@
 
 ## Verification record
 
-All values below were resolved read-only on `2026-09-01T09:39:17Z` from LayerZero's official metadata API (`https://metadata.layerzero-api.com/v1/metadata`), the installed LayerZero deployment/SDK packages, and the public chain RPCs. They were re-resolved from that official metadata API on `2026-09-03`; no material Endpoint, send/receive library, Executor, LayerZero/Nethermind/Horizen DVN, EID, or deprecated Dead-DVN drift was found for Solana or Robinhood. Relevant installed versions are:
+All values below were resolved read-only on `2026-09-01T09:39:17Z` from LayerZero's official metadata API (`https://metadata.layerzero-api.com/v1/metadata`), the installed LayerZero deployment/SDK packages, and the public chain RPCs. They were re-resolved from that official metadata API at `2026-09-03T16:03:29Z`–`16:03:32Z`; no Endpoint, send/receive library, Executor, LayerZero/Nethermind/Horizen DVN, EID, or deprecated Dead-DVN drift was found for Solana or Robinhood. Relevant installed versions are:
 
 - `@layerzerolabs/metadata-tools` `4.0.0`
 - `@layerzerolabs/lz-definitions` `3.1.10`

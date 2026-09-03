@@ -10,7 +10,7 @@ against exact base `515d008a0702bb3c4748ca87e0c689e689d4458b`.
 The prior audit target, `a53a86bcc0a18934a19f2889ba61ceb1633fa359`,
 is superseded because it did not contain the fail-closed activation boundary.
 
-Phase 5A.3 is pre-mainnet. No production program, contract, Store, escrow, peer,
+Phase 5A.4 is pre-mainnet. **PRODUCTION BRIDGE CODE FROZEN.** No production program, contract, Store, escrow, peer,
 security configuration, multisig, or liquidity exists. Later documentation-only
 commits do not change the code target. This package does not authorize Phase 5B.
 
@@ -48,13 +48,17 @@ The proposal explicitly pins ULN302 send/receive libraries and Executors on both
 chains, uses no required DVN plus optional LayerZero Labs/Nethermind/Horizen at
 threshold 2, rejects Dead DVN/default inheritance, derives peers byte-for-byte,
 and enforces 200,000 destination gas/CU with zero native value for standard
-sends. Solana-source confirmations are 32. Robinhood-source confirmations remain
-fail-closed; 128 is only a provisional soft-depth candidate.
+sends. Solana-source confirmations are 32. Robinhood-source confirmations are
+30 L2 blocks: source-depth/reorg mitigation only, not Ethereum finality, Nitro
+challenge completion, or proof of finalized L1 posting. See the 1,024-block and
+ten-batch evidence in `ROBINHOOD_FINALITY_EVIDENCE.md`.
 
 Four limiters are mandatory: Solana outbound/inbound and Robinhood
 outbound/inbound. Profiles are 500,000 SAN canary, 30,000,000 SAN early public,
-and 50,000,000 SAN normal, each per direction/24 hours with documented Solana
-integer rounding and cross-refill semantics. Missing controls fail closed.
+50,000,000 SAN normal, and 100,000,000 SAN mature, each per direction/24 hours
+with documented Solana integer rounding, cross-refill, and full-bucket
+`set_capacity` reset semantics. Missing controls fail closed. See
+`FINAL_RATE_LIMIT_ANALYSIS.md` and `PRODUCTION_RATE_LIMIT_POLICY.md`.
 
 Solana has separate pauser/unpauser capability. EVM bridge pause blocks
 quote/debit/credit while ordinary ERC-20 transfers remain live; the owner also
@@ -127,8 +131,8 @@ Docker reproducibility now passes. Two clean checkouts of `d2876228…` built
 byte-identical artifacts with raw SHA-256 `b6c6a071…ce543`, executable hash
 `5068a15a…d33d6`, and size 571,864 bytes. The dependency ledger contains 99
 current GitHub alerts; no dependency was changed and none was found to reach a
-new deployed bridge vulnerability. Robinhood confirmation policy remains
-deliberately unapproved.
+new deployed bridge vulnerability. Phase 5A.4 freezes the 30-block Robinhood
+source-depth policy with its explicit non-finality limitations.
 
 ## Findings, accepted risks, and decisions
 
@@ -150,6 +154,13 @@ or MEDIUM tooling finding remains. A live manifest cannot be approved until the
 production applications exist, and the checksum is not a reviewer signature.
 Provider organizational independence also remains a human check.
 
+The Phase 5A.4 hostile review additionally required the checker to bind Solana
+mainnet genesis and authenticate Endpoint/ULN ProgramData addresses, executable
+hashes, loader ownership, and upgrade authorities; it also required in-flight
+packet destination EID/OApp verification. Focused regressions pass. The Store
+admin remains an explicitly documented unpause-capable super-admin in frozen
+program code; the dedicated unpauser does not constrain it.
+
 Accepted design risks: multisig governance can maliciously upgrade/reconfigure;
 Solana buckets measure net imbalance through cross-refill rather than strict
 gross daily volume; EVM owner concentration permits pause griefing/unpause;
@@ -157,8 +168,9 @@ Executor/DVN/sequencer availability and correctness remain external assumptions;
 and surplus-only Solana fee withdrawal remains callable while paused.
 
 Unresolved human decisions/blockers: independent approval of the reproducible
-hashes, independent external audit, Robinhood finality, live scanner/provider approval, current
-LayerZero metadata/DVN contracts, all production application and multisig
+hashes, independent external audit, independent acceptance of the 30-block
+Robinhood source-depth assumptions, live scanner/provider approval, current
+LayerZero trust-root ProgramData hashes/authorities and DVN contracts, all production application and multisig
 addresses, signer/threshold/separation/recovery policy, pause-only guardian
 decision, fresh economic limits, monitored disclosure contact, and explicit
 Phase 5B authorization. See `AUDIT_TARGET.md`, `PHASE_5A1_BLOCKERS.md`, and

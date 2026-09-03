@@ -1,4 +1,5 @@
 import { InFlightManifest, InFlightMessageEvidence, parseInFlightInventory } from '../../scripts/inFlightInventory'
+import { SOLANA_MAINNET_GENESIS_HASH } from '../../scripts/sanMintConfig'
 import {
     BuildManifestInput,
     ScannerProviderResult,
@@ -50,7 +51,7 @@ const providerResult = (
             fromSlot: '100',
             toSlot: '110',
             finalizedSlot: '110',
-            genesisHash: 'genesis',
+            genesisHash: SOLANA_MAINNET_GENESIS_HASH,
             startBlockhash: 'start',
             endBlockhash: 'end',
             complete: true,
@@ -199,6 +200,9 @@ describe('production in-flight scanner manifest', () => {
         const wrongChain = buildInFlightManifest(buildInput())
         ;(wrongChain.identities.robinhood.chainId as number) = 1
         expect(() => parse(wrongChain)).toThrow('wrong production chain')
+        const wrongGenesis = buildInFlightManifest(buildInput())
+        wrongGenesis.ranges.solana.genesisHash = 'devnet'
+        expect(() => parse(wrongGenesis)).toThrow('Solana mainnet genesis')
         const missingProvenance = buildInFlightManifest(buildInput())
         missingProvenance.provenance.sourceEvidenceAgreement = false
         expect(() => parse(missingProvenance)).toThrow('missing or unreconciled')
@@ -208,6 +212,14 @@ describe('production in-flight scanner manifest', () => {
         const mutated = buildInFlightManifest(buildInput())
         mutated.inventoryId = 'mutated'
         expect(() => parse(mutated)).toThrow('checksum does not match')
+    })
+
+    it('keeps packet destination EID and OApp receiver checks in both scanner directions', () => {
+        const scannerSource = require('fs').readFileSync('scripts/scanProductionInFlight.ts', 'utf8') as string
+        expect(scannerSource).toContain('packet.dstEid() !== ROBINHOOD_EID')
+        expect(scannerSource).toContain('packet.receiverAddressB20().toLowerCase() !== robinhoodOft.toLowerCase()')
+        expect(scannerSource).toContain('packet.dstEid() !== SOLANA_EID')
+        expect(scannerSource).toContain('packet.receiver().toLowerCase() !==')
     })
 
     it('rejects absent LayerZero API corroboration', () => {

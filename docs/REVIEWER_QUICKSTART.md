@@ -37,6 +37,13 @@ executable hash
 and size 571,864 bytes. Production ID embedding is exactly one; testnet and
 starter IDs are zero. See `REPRODUCIBLE_BUILD_EVIDENCE.md`. The prior host
 artifact remains documented but is superseded for deployment purposes.
-Robinhood finality remains unapproved.
+Phase 5A.4 freezes Robinhood-source depth at 30 blocks and Solana-source depth
+at 32. Thirty Robinhood blocks are not Ethereum finality, challenge-period
+completion, or proof of finalized L1 posting. Review
+`ROBINHOOD_FINALITY_EVIDENCE.md`, `ROBINHOOD_FINALITY_POLICY.md`,
+`FINAL_RATE_LIMIT_ANALYSIS.md`, `PRODUCTION_RATE_LIMIT_POLICY.md`, and
+`PRODUCTION_CONFIGURATION.md`. Confirm the four rate tiers, Solana full-bucket
+capacity-reset warning, and the trust-root/genesis/packet-destination checker
+hardening. The testnet round trip remains operational evidence only.
 Report a potentially exploitable vulnerability through `SECURITY.md`, not a
 public issue. No audit completion, Phase 5B authorization, or bounty is implied.

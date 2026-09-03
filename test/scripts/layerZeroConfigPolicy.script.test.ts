@@ -10,7 +10,7 @@ import {
 const PEERS = { solana: '0x' + '11'.repeat(32), robinhood: '0x' + '22'.repeat(32) }
 const APPROVED_TEST_POLICY: BridgePolicy = {
     ...SAN_LAYERZERO_POLICY,
-    robinhoodSourceConfirmations: 32n,
+    robinhoodSourceConfirmations: 30n,
 }
 
 const caseVariant = (value: string): string => {
@@ -49,7 +49,7 @@ const fixture = (): BridgeObservation => ({
             explicitOptionalDvns: true,
         },
         receive: {
-            confirmations: 32n,
+            confirmations: 30n,
             requiredDvns: [],
             optionalDvns: [...SAN_LAYERZERO_POLICY.solana.optionalDvns],
             optionalThreshold: 2,
@@ -67,7 +67,7 @@ const fixture = (): BridgeObservation => ({
         executorExplicit: true,
         peer: PEERS.robinhood,
         send: {
-            confirmations: 32n,
+            confirmations: 30n,
             requiredDvns: [],
             optionalDvns: [...SAN_LAYERZERO_POLICY.robinhood.optionalDvns],
             optionalThreshold: 2,
@@ -94,13 +94,18 @@ const fails = (mutate: (value: BridgeObservation) => void): void => {
 }
 
 describe('future deployed LayerZero configuration policy', () => {
-    it('fails closed while Robinhood-source confirmations remain unresolved', () => {
-        expect(() => validateLayerZeroObservation(fixture(), PEERS)).toThrow(
-            'Robinhood-source confirmations policy is unresolved'
-        )
+    it('records and accepts the frozen 32/30 source-confirmation policy', () => {
+        expect(SAN_LAYERZERO_POLICY.solanaSourceConfirmations).toBe(32n)
+        expect(SAN_LAYERZERO_POLICY.robinhoodSourceConfirmations).toBe(30n)
+        expect(() => validateLayerZeroObservation(fixture(), PEERS)).not.toThrow()
     })
-    it('accepts an otherwise exact policy when a confirmation value is explicitly supplied', () => {
-        expect(() => validateLayerZeroObservation(fixture(), PEERS, APPROVED_TEST_POLICY)).not.toThrow()
+    it('fails closed if the Robinhood confirmation policy is missing', () => {
+        expect(() =>
+            validateLayerZeroObservation(fixture(), PEERS, {
+                ...APPROVED_TEST_POLICY,
+                robinhoodSourceConfirmations: null,
+            })
+        ).toThrow('Robinhood-source confirmations policy is unresolved')
     })
     it('rejects a Dead DVN', () =>
         fails((value) => {

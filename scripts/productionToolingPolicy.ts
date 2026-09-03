@@ -89,6 +89,9 @@ export function buildProductionWiringPreview(input: ProductionWiringPreviewInput
     if (input.robinhoodSourceConfirmations == null || input.robinhoodSourceConfirmations <= 0n) {
         throw new Error('Robinhood-source confirmations must be explicitly approved before a wiring preview')
     }
+    if (input.robinhoodSourceConfirmations !== 30n) {
+        throw new Error('Robinhood-source confirmations must equal the frozen 30-block policy')
+    }
     validateProductionRateLimitPlan(input.rateLimits, input.rateLimitProfile)
     return {
         mode: 'READ_ONLY_PREVIEW',

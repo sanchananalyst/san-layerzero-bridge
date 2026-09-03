@@ -37,8 +37,8 @@ The checker reads and validates:
 - exact bidirectional peers, explicitly app-selected send/receive libraries,
   raw non-inherited ULN configs, DVNs, thresholds, Executor, confirmations, and
   enforced receive options;
-- Solana inbound/outbound and Robinhood inbound/outbound rate limits against the
-  selected canary profile;
+- Solana inbound/outbound and Robinhood inbound/outbound rate limits against one
+  explicitly selected `canary`, `publicLaunch`, `normal`, or `mature` profile;
 - Robinhood supply, both in-flight directions, Solana TVL, escrow backing, and
   positive finalized snapshot heights. Robinhood reads are pinned to one
   `finalized` block number and hash. All critical Solana accounts are fetched in
@@ -72,6 +72,14 @@ Every blank in `.env.example` is deliberate. Values must be copied from reviewed
 governance, reproducible-build, finality, and deployment records. The checker
 does not infer a multisig, confirmation count, deployment address, or bytecode
 hash.
+
+Phase 5A.4 freezes Robinhood-source confirmations at 30 and Solana-source
+confirmations at 32. `SAN_RATE_LIMIT_PROFILE` is mandatory and accepts only the
+four frozen policy names. The checker also requires independently approved
+ProgramData address, executable hash, and upgrade authority for the Solana
+LayerZero Endpoint and ULN302 programs, and binds every Solana observation and
+in-flight manifest to the exact mainnet genesis hash. An address-only trust-root
+match is insufficient.
 
 In-flight messages are not represented by one authoritative on-chain counter.
 `pnpm san:scan-production-inflight` therefore scans the complete approved range

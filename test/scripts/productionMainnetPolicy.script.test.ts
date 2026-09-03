@@ -15,7 +15,7 @@ import {
     validateRepeatedProductionObservations,
 } from '../../scripts/productionMainnetPolicy'
 import { PRODUCTION_RATE_LIMIT_PROFILES } from '../../scripts/productionRateLimitPolicy'
-import { CANONICAL_SAN_MINT, LEGACY_SPL_TOKEN_PROGRAM } from '../../scripts/sanMintConfig'
+import { CANONICAL_SAN_MINT, LEGACY_SPL_TOKEN_PROGRAM, SOLANA_MAINNET_GENESIS_HASH } from '../../scripts/sanMintConfig'
 
 const solanaAddress = (fill: number): string => new PublicKey(Uint8Array.from({ length: 32 }, () => fill)).toBase58()
 const evmAddress = (fill: string): string => ethers.utils.getAddress(`0x${fill.repeat(40)}`)
@@ -47,7 +47,7 @@ const approved = (): ApprovedProductionState => ({
     robinhoodDelegate: evmAddress('3'),
     solanaPauser: solanaAddress(6),
     solanaUnpauser: solanaAddress(7),
-    robinhoodSourceConfirmations: 128n,
+    robinhoodSourceConfirmations: 30n,
     rateLimitProfile: PRODUCTION_RATE_LIMIT_PROFILES.canary,
     expectedRobinhoodSupplyRaw: 0n,
     expectedSolanaMintSupplyRaw: 1_000_000n,
@@ -57,6 +57,12 @@ const approved = (): ApprovedProductionState => ({
     forbiddenRobinhoodBootstrapAuthorities: [evmAddress('9')],
     expectedSolanaProgramData: solanaAddress(8),
     expectedSolanaProgramDataSha256: `0x${'11'.repeat(32)}`,
+    expectedSolanaEndpointProgramData: solanaAddress(10),
+    expectedSolanaEndpointProgramDataSha256: `0x${'33'.repeat(32)}`,
+    expectedSolanaEndpointUpgradeAuthority: solanaAddress(11),
+    expectedSolanaUlnProgramData: solanaAddress(12),
+    expectedSolanaUlnProgramDataSha256: `0x${'44'.repeat(32)}`,
+    expectedSolanaUlnUpgradeAuthority: solanaAddress(13),
     expectedRobinhoodRuntimeCodeHash: `0x${'22'.repeat(32)}`,
     expectedInFlight: {
         inventoryId: 'pre-activation-zero-state',
@@ -117,7 +123,7 @@ const fixture = (): ProductionMainnetObservation => {
                 fromSlot: '0',
                 toSlot: '1',
                 finalizedSlot: '1',
-                genesisHash: 'genesis',
+                genesisHash: SOLANA_MAINNET_GENESIS_HASH,
                 startBlockhash: 'start',
                 endBlockhash: contextBlockhash,
                 complete: true,
@@ -152,6 +158,7 @@ const fixture = (): ProductionMainnetObservation => {
     return {
         solana: {
             eid: 30168,
+            genesisHash: SOLANA_MAINNET_GENESIS_HASH,
             mint: CANONICAL_SAN_MINT,
             tokenProgram: LEGACY_SPL_TOKEN_PROGRAM,
             decimals: 6,
@@ -178,6 +185,16 @@ const fixture = (): ProductionMainnetObservation => {
             programDataSha256: policy.expectedSolanaProgramDataSha256,
             programDataOwner: 'BPFLoaderUpgradeab1e11111111111111111111111',
             programDataExecutable: false,
+            endpointProgramData: policy.expectedSolanaEndpointProgramData,
+            endpointProgramDataSha256: policy.expectedSolanaEndpointProgramDataSha256,
+            endpointUpgradeAuthority: policy.expectedSolanaEndpointUpgradeAuthority,
+            endpointProgramDataOwner: 'BPFLoaderUpgradeab1e11111111111111111111111',
+            endpointProgramDataExecutable: false,
+            ulnProgramData: policy.expectedSolanaUlnProgramData,
+            ulnProgramDataSha256: policy.expectedSolanaUlnProgramDataSha256,
+            ulnUpgradeAuthority: policy.expectedSolanaUlnUpgradeAuthority,
+            ulnProgramDataOwner: 'BPFLoaderUpgradeab1e11111111111111111111111',
+            ulnProgramDataExecutable: false,
             escrowProgramOwner: LEGACY_SPL_TOKEN_PROGRAM,
             escrowMint: CANONICAL_SAN_MINT,
             escrowAuthority: policy.solanaOftStore,
@@ -209,7 +226,7 @@ const fixture = (): ProductionMainnetObservation => {
                 executorExplicit: true,
                 peer: ethers.utils.hexZeroPad(policy.robinhoodOft, 32),
                 send: uln('solana', 32n),
-                receive: uln('solana', 128n),
+                receive: uln('solana', 30n),
             },
             robinhood: {
                 sendLibrary: SAN_LAYERZERO_POLICY.robinhood.sendLibrary,
@@ -219,7 +236,7 @@ const fixture = (): ProductionMainnetObservation => {
                 receiveLibraryExplicit: true,
                 executorExplicit: true,
                 peer: ethers.utils.hexlify(new PublicKey(policy.solanaOftStore).toBytes()),
-                send: uln('robinhood', 128n),
+                send: uln('robinhood', 30n),
                 receive: uln('robinhood', 32n),
             },
         },
@@ -247,7 +264,9 @@ const fixture = (): ProductionMainnetObservation => {
                 'production OFT program',
                 'production OFT ProgramData',
                 'LayerZero Endpoint program',
+                'LayerZero Endpoint ProgramData',
                 'LayerZero ULN302 program',
+                'LayerZero ULN302 ProgramData',
                 'Endpoint OApp registry',
                 'Endpoint default send-library config',
                 'Endpoint app send-library config',
@@ -376,8 +395,17 @@ describe('complete production mainnet policy', () => {
         ).toThrow('Approved Robinhood-source confirmations are required')
     })
 
+    it('fails closed when approved Robinhood confirmations differ from the frozen policy', () => {
+        const policy = approved()
+        policy.robinhoodSourceConfirmations = 31n
+        expect(() =>
+            validateProductionMainnetObservation(fixture(), policy, ProductionExpectedState.PRE_ACTIVATION_INERT)
+        ).toThrow('frozen 30-block policy')
+    })
+
     it.each([
         ['Solana testnet EID', (v: ProductionMainnetObservation) => (v.solana.eid = 40168)],
+        ['wrong Solana genesis', (v: ProductionMainnetObservation) => (v.solana.genesisHash = 'devnet')],
         ['Robinhood testnet chain ID', (v: ProductionMainnetObservation) => (v.robinhood.chainId = 46630)],
         ['Robinhood testnet EID', (v: ProductionMainnetObservation) => (v.robinhood.eid = 40451)],
         [
@@ -441,6 +469,24 @@ describe('complete production mainnet policy', () => {
         })
         fails((value) => {
             value.solana.programDataExecutable = true
+        })
+        fails((value) => {
+            value.solana.endpointProgramDataSha256 = `0x${'55'.repeat(32)}`
+        })
+        fails((value) => {
+            value.solana.endpointUpgradeAuthority = solanaAddress(20)
+        })
+        fails((value) => {
+            value.solana.ulnProgramData = solanaAddress(21)
+        })
+        fails((value) => {
+            value.solana.ulnProgramDataSha256 = `0x${'66'.repeat(32)}`
+        })
+        fails((value) => {
+            value.solana.endpointProgramDataOwner = solanaAddress(22)
+        })
+        fails((value) => {
+            value.solana.ulnProgramDataExecutable = true
         })
     })
 

@@ -1,5 +1,9 @@
 # Production Rate Limits
 
+> Phase 5A.4 freeze: `PRODUCTION_RATE_LIMIT_POLICY.md` is the controlling
+> operating policy. This document retains the broader candidate analysis and
+> implementation background.
+
 ## Status and recommendation
 
 These are unapplied Phase 5A recommendations. No mainnet account or contract
@@ -13,10 +17,12 @@ progression is:
 | First-mainnet canary |                               500,000 SAN | Temporary validation ceiling only                       |
 | Early public launch  |         30,000,000 SAN per 86,400 seconds | Launch setting with arbitrage headroom                  |
 | Normal operations    |         50,000,000 SAN per 86,400 seconds | Proposed steady-state setting after evidence and review |
+| Mature operations    |        100,000,000 SAN per 86,400 seconds | Later governance decision only                          |
 
 The earlier 100,000 / 1,000,000 / 5,000,000 SAN engineering placeholders are
-superseded. The 75,000,000 and 100,000,000 SAN cases remain stress cases, not
-recommendations.
+superseded. The 75,000,000 case remains a comparison point. The 100,000,000 SAN
+case is now the MATURE policy ceiling, but it is not part of initial activation
+and requires a later evidence-backed governance decision.
 
 Production must explicitly configure **both** Solana limiters for the
 Solana/Robinhood peer (`outbound_rate_limiter` and `inbound_rate_limiter`) and
@@ -25,11 +31,12 @@ directional configuration must fail the deployment/wiring preflight closed.
 
 ## Market assumptions
 
-The sizing model uses a spot reference of approximately **$0.00137 per SAN**,
-observed on 2026-09-01 UTC. Public aggregators showed approximately 1 billion
-SAN supply and roughly $24,000-$33,000 of 24-hour market volume. Price and volume
-are volatile inputs, not contract parameters. Re-run the model from fresh
-market data before each activation or capacity change.
+The frozen economic decision uses **$0.00142459 per SAN**, approximately
+**$30,969** in current 24-hour market volume, and approximately **$110,964** in
+planned PumpSwap liquidity. Tables below using $0.00137/$100k are retained as
+the earlier conservative candidate model; final values and triggers are in
+`FINAL_RATE_LIMIT_ANALYSIS.md` and `PRODUCTION_RATE_LIMIT_POLICY.md`. Price and
+volume are volatile inputs, not contract parameters.
 
 The Robinhood liquidity model assumes:
 
@@ -157,8 +164,9 @@ as unlimited-by-design.
    pool reserves, fresh price/volume data, and governance approval.
 4. Move to 50M only after measured public demand and operational history justify
    it. Do not automatically graduate by elapsed time.
-5. Capacity changes must not unintentionally gift fresh availability. Read back
-   current tokens before and after every future change.
+5. Solana `set_capacity` always resets the changed bucket to full. Treat every
+   change as an immediate capacity grant: pause, obtain multisig approval,
+   simulate independently, and read back independently before any unpause.
 6. Never change a limiter merely to make a pending transfer succeed.
 
 Configuration remains blocked until the real OFT Store and SanOFT addresses

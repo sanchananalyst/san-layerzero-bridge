@@ -41,6 +41,12 @@ approval, execution, and state read-back should be separated where practical.
 | Pauser                        | optionally a reviewed 2-of-3 pause-only Squads role                |
 | Unpauser                      | 3-of-5 after incident review and complete read-back                |
 
+The Store admin is a super-admin: frozen program code permits it to set
+`paused` directly and to replace pauser/unpauser assignments. The dedicated
+unpauser does **not** constrain a compromised Store admin. Reviewers must not
+claim stronger role separation. True admin-versus-unpauser separation would
+require a new production-program change, audit target, and external review.
+
 Store admin and Endpoint delegate may share the operations Squads only after
 explicit acceptance of correlated compromise risk. Upgrade authority should not
 be the routine operator.
