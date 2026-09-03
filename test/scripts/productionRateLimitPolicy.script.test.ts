@@ -1,6 +1,7 @@
 import {
     PRODUCTION_RATE_LIMIT_PROFILES,
     ProductionRateLimitPlan,
+    productionRateLimitProfile,
     validateProductionRateLimitPlan,
     validateSolanaProductionRateLimitTask,
 } from '../../scripts/productionRateLimitPolicy'
@@ -29,6 +30,19 @@ describe('production rate-limit policy', () => {
             capacity: 50_000_000_000_000n,
             refillPerSecond: 578_703_703n,
         })
+        expect(PRODUCTION_RATE_LIMIT_PROFILES.mature).toEqual({
+            capacity: 100_000_000_000_000n,
+            refillPerSecond: 1_157_407_407n,
+        })
+    })
+
+    it('selects only one of the four explicit production profiles', () => {
+        expect(productionRateLimitProfile('canary')).toBe(PRODUCTION_RATE_LIMIT_PROFILES.canary)
+        expect(productionRateLimitProfile('publicLaunch')).toBe(PRODUCTION_RATE_LIMIT_PROFILES.publicLaunch)
+        expect(productionRateLimitProfile('normal')).toBe(PRODUCTION_RATE_LIMIT_PROFILES.normal)
+        expect(productionRateLimitProfile('mature')).toBe(PRODUCTION_RATE_LIMIT_PROFILES.mature)
+        expect(() => productionRateLimitProfile('')).toThrow('must be one of')
+        expect(() => productionRateLimitProfile('experimental')).toThrow('must be one of')
     })
 
     it('accepts an explicit matching four-direction plan', () => {

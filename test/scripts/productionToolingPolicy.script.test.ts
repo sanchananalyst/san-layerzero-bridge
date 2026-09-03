@@ -90,12 +90,13 @@ describe('production transaction-tooling dry runs', () => {
         const preview = buildProductionWiringPreview({
             solanaOftStore: solanaAddress(1),
             robinhoodOft: evmAddress('1'),
-            robinhoodSourceConfirmations: 128n,
+            robinhoodSourceConfirmations: 30n,
             rateLimits: rateLimits(),
             rateLimitProfile: PRODUCTION_RATE_LIMIT_PROFILES.canary,
         })
         expect(preview.transactions).toBe(0)
         expect(preview.requiredDirectionalLimiters).toBe(4)
+        expect(preview.robinhoodSourceConfirmations).toBe(30n)
         expect(() =>
             buildProductionWiringPreview({
                 solanaOftStore: solanaAddress(1),
@@ -105,6 +106,15 @@ describe('production transaction-tooling dry runs', () => {
                 rateLimitProfile: PRODUCTION_RATE_LIMIT_PROFILES.canary,
             })
         ).toThrow('explicitly approved')
+        expect(() =>
+            buildProductionWiringPreview({
+                solanaOftStore: solanaAddress(1),
+                robinhoodOft: evmAddress('1'),
+                robinhoodSourceConfirmations: 31n,
+                rateLimits: rateLimits(),
+                rateLimitProfile: PRODUCTION_RATE_LIMIT_PROFILES.canary,
+            })
+        ).toThrow('frozen 30-block policy')
     })
 
     it('simulates ordered authority handoff and rejects residual deployer authority', () => {

@@ -10,7 +10,13 @@ Target: `d28762288bb5180ff292f57eef7132191f2037ec`.
 - [ ] Review the Phase 5A.3 tooling target separately and verify the common-context account set has no fallback RPC reads.
 - [ ] Verify decoded Store `tokenMint`/`tokenEscrow` equal canonical SAN/the approved escrow and the Store is the production `OFT` PDA derived from that escrow.
 - [ ] Verify schema-v2 scanner ranges, boundary hashes, pagination, dual-provider reconciliation, GUID uniqueness, destination evidence, API corroboration, and directional accounting.
-- [ ] Independently approve the recorded reproducible hashes; keep Robinhood finality open and do not authorize Phase 5B.
+- [ ] Independently approve the recorded reproducible hashes and exact frozen target.
+- [ ] Review the 1,024-block/ten-batch finality evidence; confirm 30 Robinhood blocks is L2 depth only, not Ethereum finality.
+- [ ] Review the 500k/30M/50M/100M four-direction rate policy and economic triggers.
+- [ ] Verify Solana `set_capacity` is treated as an immediate full-bucket grant.
+- [ ] Verify Endpoint/ULN ProgramData hashes/authorities, mainnet genesis, and packet destination OApps fail closed.
+- [ ] Confirm the activation-race fix and testnet round-trip evidence without treating either as mainnet approval.
+- [ ] Do not authorize Phase 5B.
 
 Answer each question with source, test, and runbook evidence:
 

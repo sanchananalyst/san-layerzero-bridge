@@ -45,9 +45,9 @@ export interface BridgePolicy {
 
 export const SAN_LAYERZERO_POLICY: BridgePolicy = {
     solanaSourceConfirmations: 32n,
-    // Fail closed until DVN behavior and an L1-posting/finality-aligned value
-    // for Robinhood Nitro are documented and approved by humans.
-    robinhoodSourceConfirmations: null,
+    // L2 source-depth/reorg mitigation only. This is not Ethereum finality,
+    // Nitro challenge-period completion, or proof of finalized L1 posting.
+    robinhoodSourceConfirmations: 30n,
     optionalThreshold: 2,
     solana: {
         sendLibrary: '7a4WjyR8VZ7yZz5XJAKm39BUGn5iT9CKcv2pmG9tdXVH',

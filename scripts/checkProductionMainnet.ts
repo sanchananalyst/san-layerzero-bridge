@@ -23,7 +23,7 @@ import {
     validateProductionMainnetObservation,
     validateRepeatedProductionObservations,
 } from './productionMainnetPolicy'
-import { PRODUCTION_RATE_LIMIT_PROFILES } from './productionRateLimitPolicy'
+import { productionRateLimitProfile } from './productionRateLimitPolicy'
 import { requireOftStoreAssetBindings } from './productionStoreBindings'
 import { CANONICAL_SAN_MINT } from './sanMintConfig'
 import { collectSolanaCommonContext, toUmiRpcAccount } from './solanaCommonContext'
@@ -110,7 +110,7 @@ const approvedStateFromEnv = (): ApprovedProductionState => ({
     robinhoodOwner: requiredEnv('SAN_ROBINHOOD_OWNER'),
     robinhoodDelegate: requiredEnv('SAN_ROBINHOOD_DELEGATE'),
     robinhoodSourceConfirmations: requiredBigInt('SAN_ROBINHOOD_SOURCE_CONFIRMATIONS'),
-    rateLimitProfile: PRODUCTION_RATE_LIMIT_PROFILES.canary,
+    rateLimitProfile: productionRateLimitProfile(requiredEnv('SAN_RATE_LIMIT_PROFILE')),
     expectedRobinhoodSupplyRaw: requiredBigInt('SAN_EXPECTED_ROBINHOOD_SUPPLY_RAW'),
     expectedSolanaMintSupplyRaw: requiredBigInt('SAN_EXPECTED_SOLANA_MINT_SUPPLY_RAW'),
     expectedSolanaMintAuthority: optionalSolanaAuthority('SAN_EXPECTED_SOLANA_MINT_AUTHORITY'),
@@ -119,6 +119,12 @@ const approvedStateFromEnv = (): ApprovedProductionState => ({
     forbiddenRobinhoodBootstrapAuthorities: requiredList('SAN_FORBIDDEN_ROBINHOOD_BOOTSTRAP_AUTHORITIES'),
     expectedSolanaProgramData: requiredEnv('SAN_SOLANA_PROGRAM_DATA'),
     expectedSolanaProgramDataSha256: requiredEnv('SAN_SOLANA_PROGRAM_DATA_SHA256'),
+    expectedSolanaEndpointProgramData: requiredEnv('SAN_SOLANA_ENDPOINT_PROGRAM_DATA'),
+    expectedSolanaEndpointProgramDataSha256: requiredEnv('SAN_SOLANA_ENDPOINT_PROGRAM_DATA_SHA256'),
+    expectedSolanaEndpointUpgradeAuthority: requiredEnv('SAN_SOLANA_ENDPOINT_UPGRADE_AUTHORITY'),
+    expectedSolanaUlnProgramData: requiredEnv('SAN_SOLANA_ULN_PROGRAM_DATA'),
+    expectedSolanaUlnProgramDataSha256: requiredEnv('SAN_SOLANA_ULN_PROGRAM_DATA_SHA256'),
+    expectedSolanaUlnUpgradeAuthority: requiredEnv('SAN_SOLANA_ULN_UPGRADE_AUTHORITY'),
     expectedRobinhoodRuntimeCodeHash: requiredEnv('SAN_ROBINHOOD_RUNTIME_CODE_HASH'),
     expectedInFlight: {
         inventoryId: requiredEnv('SAN_APPROVED_IN_FLIGHT_INVENTORY_ID'),
@@ -164,6 +170,8 @@ export const collectProductionMainnetObservation = async (
     )
     const peerKey = new PublicKey(peerAddress.toString())
     const programDataAddress = new PublicKey(approved.expectedSolanaProgramData)
+    const endpointProgramDataAddress = new PublicKey(approved.expectedSolanaEndpointProgramData)
+    const ulnProgramDataAddress = new PublicKey(approved.expectedSolanaUlnProgramData)
     const escrowAddress = new PublicKey(approved.solanaEscrow)
     const mintAddress = new PublicKey(CANONICAL_SAN_MINT)
     const epDeriver = new EndpointPDADeriver(EndpointProgram.PROGRAM_ID)
@@ -176,7 +184,9 @@ export const collectProductionMainnetObservation = async (
         { label: 'production OFT program', address: programAddress },
         { label: 'production OFT ProgramData', address: programDataAddress },
         { label: 'LayerZero Endpoint program', address: EndpointProgram.PROGRAM_ID },
+        { label: 'LayerZero Endpoint ProgramData', address: endpointProgramDataAddress },
         { label: 'LayerZero ULN302 program', address: SOLANA_ULN_PROGRAM },
+        { label: 'LayerZero ULN302 ProgramData', address: ulnProgramDataAddress },
         ...layerZeroContextAccounts,
     ])
     requireAccountOwner(solanaSnapshot.account(storeAddress), programAddress, 'OFT Store')
@@ -191,6 +201,14 @@ export const collectProductionMainnetObservation = async (
     }
     requireUpgradeableProgram(solanaSnapshot.account(EndpointProgram.PROGRAM_ID), 'LayerZero Endpoint program')
     requireUpgradeableProgram(solanaSnapshot.account(SOLANA_ULN_PROGRAM), 'LayerZero ULN302 program')
+    for (const [label, address] of [
+        ['LayerZero Endpoint ProgramData', endpointProgramDataAddress],
+        ['LayerZero ULN302 ProgramData', ulnProgramDataAddress],
+    ] as const) {
+        const info = solanaSnapshot.account(address)
+        requireAccountOwner(info, new PublicKey(SOLANA_UPGRADEABLE_LOADER), label)
+        if (info.executable) throw new Error(`${label} must not itself be executable`)
+    }
     const store = oft.accounts.deserializeOFTStore(toUmiRpcAccount(storeAddress, solanaSnapshot.account(storeAddress)))
     requireOftStoreAssetBindings(
         storeAddress.toBase58(),
@@ -210,6 +228,26 @@ export const collectProductionMainnetObservation = async (
     }
     const programDataInfo = solanaSnapshot.account(programDataAddress)
     const parsedProgramData = parseProgramData(programDataInfo.data)
+    const endpointProgramInfo = solanaSnapshot.account(EndpointProgram.PROGRAM_ID)
+    if (endpointProgramInfo.data.length < 36 || endpointProgramInfo.data.readUInt32LE(0) !== 2) {
+        throw new Error('LayerZero Endpoint program account has an unexpected loader state')
+    }
+    const linkedEndpointProgramDataAddress = new PublicKey(endpointProgramInfo.data.subarray(4, 36))
+    if (!linkedEndpointProgramDataAddress.equals(endpointProgramDataAddress)) {
+        throw new Error('LayerZero Endpoint program points to a different ProgramData account')
+    }
+    const endpointProgramDataInfo = solanaSnapshot.account(endpointProgramDataAddress)
+    const endpointProgramData = parseProgramData(endpointProgramDataInfo.data)
+    const ulnProgramInfo = solanaSnapshot.account(SOLANA_ULN_PROGRAM)
+    if (ulnProgramInfo.data.length < 36 || ulnProgramInfo.data.readUInt32LE(0) !== 2) {
+        throw new Error('LayerZero ULN302 program account has an unexpected loader state')
+    }
+    const linkedUlnProgramDataAddress = new PublicKey(ulnProgramInfo.data.subarray(4, 36))
+    if (!linkedUlnProgramDataAddress.equals(ulnProgramDataAddress)) {
+        throw new Error('LayerZero ULN302 program points to a different ProgramData account')
+    }
+    const ulnProgramDataInfo = solanaSnapshot.account(ulnProgramDataAddress)
+    const ulnProgramData = parseProgramData(ulnProgramDataInfo.data)
 
     const escrowInfo = solanaSnapshot.account(escrowAddress)
     const mintInfo = solanaSnapshot.account(mintAddress)
@@ -240,6 +278,7 @@ export const collectProductionMainnetObservation = async (
         provider
     )
     const [
+        solanaGenesisHash,
         robinhoodOwner,
         robinhoodPaused,
         robinhoodEndpoint,
@@ -256,6 +295,7 @@ export const collectProductionMainnetObservation = async (
         robinhoodBlock,
         layerZero,
     ] = await Promise.all([
+        connection.getGenesisHash(),
         oftContract.owner(evmCall),
         oftContract.paused(evmCall),
         oftContract.endpoint(evmCall),
@@ -291,6 +331,7 @@ export const collectProductionMainnetObservation = async (
     return {
         solana: {
             eid: SOLANA_EID,
+            genesisHash: solanaGenesisHash,
             mint: mintAddress.toBase58(),
             tokenProgram: mintInfo.owner.toBase58(),
             decimals: mint.decimals,
@@ -317,6 +358,16 @@ export const collectProductionMainnetObservation = async (
             programDataSha256: parsedProgramData.executableSha256,
             programDataOwner: programDataInfo.owner.toBase58(),
             programDataExecutable: programDataInfo.executable,
+            endpointProgramData: endpointProgramDataAddress.toBase58(),
+            endpointProgramDataSha256: endpointProgramData.executableSha256,
+            endpointUpgradeAuthority: endpointProgramData.upgradeAuthority,
+            endpointProgramDataOwner: endpointProgramDataInfo.owner.toBase58(),
+            endpointProgramDataExecutable: endpointProgramDataInfo.executable,
+            ulnProgramData: ulnProgramDataAddress.toBase58(),
+            ulnProgramDataSha256: ulnProgramData.executableSha256,
+            ulnUpgradeAuthority: ulnProgramData.upgradeAuthority,
+            ulnProgramDataOwner: ulnProgramDataInfo.owner.toBase58(),
+            ulnProgramDataExecutable: ulnProgramDataInfo.executable,
             escrowProgramOwner: escrowInfo.owner.toBase58(),
             escrowMint: escrow.mint.toBase58(),
             escrowAuthority: escrow.owner.toBase58(),

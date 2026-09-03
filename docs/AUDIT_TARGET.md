@@ -8,6 +8,13 @@ The production-code audit target is:
 d28762288bb5180ff292f57eef7132191f2037ec
 ```
 
+**PRODUCTION BRIDGE CODE FROZEN.** Phase 5A.4 verified no change to
+`contracts/SanOFT.sol` or `programs/oft` since this target. The reproducible raw
+ELF SHA-256 remains
+`b6c6a071143b263579e0d1313a7a9fe88c2a84024d42103c691ee8939d6ce543` and
+the executable hash remains
+`5068a15a15899e96d2b9a2c331573d490f064f2cd84cf88f43314371ed7d33d6`.
+
 This is the squash merge of public
 [security PR #2](https://github.com/sanchananalyst/san-layerzero-bridge/pull/2),
 whose reviewed candidate commit was
@@ -35,19 +42,14 @@ regression matrix.
 The guarantee ends at the activation boundary. After public unpause, any SAN
 holder may bridge within the configured limits and may race the operator canary.
 
-## Remaining medium evidence blockers
+## Evidence status
 
-1. Solana state is collected through repeated finalized reads, but the checker
-   cannot prove that every Store, peer, SPL, loader, registry, and LayerZero
-   value belonged to one exact historical slot.
-2. The in-flight inventory hash authenticates supplied bytes and totals, but
-   the repository does not yet contain an independently reviewed scanner and
-   signed chain-range/packet-status proof establishing provenance and
-   completeness.
-
-Phase 5A.3 implements local remediations for both evidence gaps. Live evidence
-and independent review still block Phase 5B. Docker reproducibility now passes;
-independent hash approval, Robinhood finality, current LayerZero metadata, and
+Phase 5A.3 implemented local common-context and range-complete scanner
+remediations. Phase 5A.4 additionally binds Solana mainnet genesis, packet
+destination OApps, and Endpoint/ULN ProgramData identities/hashes/authorities.
+Live evidence and independent review still block Phase 5B. Docker
+reproducibility passes; independent hash approval, acceptance of the 30-block
+non-finality assumptions, freshly approved LayerZero trust-root identities, and
 final Squads/Safe evidence remain open.
 
 ## Commit interpretation
@@ -55,6 +57,7 @@ final Squads/Safe evidence remain open.
 A later commit with message `Update audit target after fail-closed activation
 fix` changes documentation only. Auditors and the reproducible-build process
 must build and review the production code at `d287622…`; they should also read
-the latest documentation commit for scope and blocker status. Any code,
-dependency, compiler, build-setting, or production-policy change after
-`d287622…` requires a new target.
+the latest documentation/tooling commit for scope and blocker status. Any
+bridge code, dependency, compiler, or build-setting change after `d287622…`
+requires a new bridge-code target; policy/checker changes require separate
+change review.

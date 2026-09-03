@@ -60,21 +60,16 @@ If the team is unwilling to add Horizen, choose Option A and explicitly accept t
 
 ## Proposed bidirectional pathway
 
-| Setting                     | Solana → Robinhood                                           | Robinhood → Solana                                           | Rationale                                                            |
-| --------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | -------------------------------------------------------------------- |
-| Source send library         | Solana ULN302 program `7a4W…dXVH` / resolved message-lib PDA | SendUln302 `0xC391…2de7`                                     | Pin current official ULN302; do not inherit                          |
-| Destination receive library | ReceiveUln302 `0xe184…1043`                                  | Solana ULN302 program `7a4W…dXVH` / resolved message-lib PDA | Match the source send library version                                |
-| DVNs                        | 2-of-3 LZ Labs, Nethermind, Horizen using Solana identities  | 2-of-3 same providers using Robinhood identities             | two-provider compromise threshold with one outage tolerated          |
-| Confirmations               | `32` in Solana send and Robinhood receive                    | **unapproved/fail-closed**                                   | Solana floor is defined; Robinhood L2 depth is not Ethereum finality |
-| Executor                    | `AwrbHe…Y7xK` in the Solana source send config               | `0x4208…0A0b` in Robinhood source send config                | current official LayerZero Executor workers; pin explicitly          |
-| Max message size            | explicit value sufficient for the supported OFT payload      | explicit value sufficient for the supported OFT payload      | benchmark standard send and reject accidental default inheritance    |
+| Setting                     | Solana → Robinhood                                           | Robinhood → Solana                                           | Rationale                                                         |
+| --------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ----------------------------------------------------------------- |
+| Source send library         | Solana ULN302 program `7a4W…dXVH` / resolved message-lib PDA | SendUln302 `0xC391…2de7`                                     | Pin current official ULN302; do not inherit                       |
+| Destination receive library | ReceiveUln302 `0xe184…1043`                                  | Solana ULN302 program `7a4W…dXVH` / resolved message-lib PDA | Match the source send library version                             |
+| DVNs                        | 2-of-3 LZ Labs, Nethermind, Horizen using Solana identities  | 2-of-3 same providers using Robinhood identities             | two-provider compromise threshold with one outage tolerated       |
+| Confirmations               | `32` in Solana send and Robinhood receive                    | `30` in Robinhood send and Solana receive                    | Robinhood value is L2 depth, not Ethereum finality                |
+| Executor                    | `AwrbHe…Y7xK` in the Solana source send config               | `0x4208…0A0b` in Robinhood source send config                | current official LayerZero Executor workers; pin explicitly       |
+| Max message size            | explicit value sufficient for the supported OFT payload      | explicit value sufficient for the supported OFT payload      | benchmark standard send and reject accidental default inheritance |
 
-In ULN, confirmations are **source-chain block confirmations** a DVN waits before verification. On Solana, `32` means 32 slots/blocks after the source event and follows LayerZero's stated minimum. On Robinhood, `32` means 32 Robinhood/Nitro L2 blocks after the source event. It is not the Arbitrum Ethereum fraud-proof challenge period and must not be presented as Ethereum L1 finality.
-
-Retain `32` only for Solana-source messages. Robinhood-source confirmations are
-unapproved and the checker fails closed. `128` is a provisional soft-depth
-candidate if governance accepts sequencer/DVN risk, but it is not L1 economic
-finality. See `docs/ROBINHOOD_FINALITY_POLICY.md`.
+In ULN, confirmations are **source-chain block confirmations** a DVN waits before verification. On Solana, `32` means 32 slots/blocks after the source event. On Robinhood, `30` means 30 Robinhood/Nitro L2 blocks after the source event. It is not the Arbitrum Ethereum fraud-proof challenge period, proof of L1 batch posting, or Ethereum L1 finality. See `docs/ROBINHOOD_FINALITY_POLICY.md`.
 
 Executor concentration remains: LayerZero has one Executor per pathway. Delivery is permissionless after verification, but the team must test manual delivery/retry and monitor Executor health before launch.
 
@@ -130,17 +125,18 @@ requires independent audit.
 
 > **Superseded:** the Phase 3 values below were engineering placeholders. Phase
 > 5A re-evaluated production market capacity; use
-> `docs/PRODUCTION_RATE_LIMITS.md` for the current unapplied recommendation.
+> `docs/PRODUCTION_RATE_LIMIT_POLICY.md` for the frozen unapplied policy.
 
 These are risk-budget proposals, not applied settings. They cap aggregate cross-chain flow per direction; the same bucket sizes are proposed in both directions. Robinhood-to-Solana execution is additionally bounded by escrow/TVL and Robinhood circulating supply.
 
-| Profile           | Solana → Robinhood capacity | Refill                  | Robinhood → Solana capacity | Frontend single-transfer maximum |
-| ----------------- | --------------------------: | ----------------------- | --------------------------: | -------------------------------: |
-| Canary            |               `500,000 SAN` | `500,000 SAN / 24 h`    |               `500,000 SAN` |              separately approved |
-| Early public      |            `30,000,000 SAN` | `30,000,000 SAN / 24 h` |            `30,000,000 SAN` |              separately approved |
-| Normal operations |            `50,000,000 SAN` | `50,000,000 SAN / 24 h` |            `50,000,000 SAN` |              separately approved |
+| Profile           | Solana → Robinhood capacity | Refill                   | Robinhood → Solana capacity | Frontend single-transfer maximum |
+| ----------------- | --------------------------: | ------------------------ | --------------------------: | -------------------------------: |
+| Canary            |               `500,000 SAN` | `500,000 SAN / 24 h`     |               `500,000 SAN` |              separately approved |
+| Early public      |            `30,000,000 SAN` | `30,000,000 SAN / 24 h`  |            `30,000,000 SAN` |              separately approved |
+| Normal operations |            `50,000,000 SAN` | `50,000,000 SAN / 24 h`  |            `50,000,000 SAN` |              separately approved |
+| Mature operations |           `100,000,000 SAN` | `100,000,000 SAN / 24 h` |           `100,000,000 SAN` |              separately approved |
 
-Capacities are approximately `0.01%`, `0.1%`, and `0.5%` of the ~`999,998,816 SAN` supply. Promotions require incident-free observation, monitoring, governance approval, and matching enforced controls on both chains. Frontend limits are usability policy only and are **not security controls** unless the contracts/programs enforce them on-chain.
+Capacities are approximately `0.05%`, `3%`, `5%`, and `10%` of the ~1B SAN supply. Promotions require incident-free observation, monitoring, governance approval, and matching enforced controls on both chains. Frontend limits are usability policy only and are **not security controls** unless the contracts/programs enforce them on-chain.
 
 ## Required read-back gates
 

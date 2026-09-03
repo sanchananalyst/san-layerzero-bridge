@@ -20,6 +20,7 @@ import {
     PRODUCTION_SOLANA_ENDPOINT,
     PRODUCTION_SOLANA_OFT_PROGRAM,
 } from './productionMainnetPolicy'
+import { requireSolanaMainnet } from './sanMintConfig'
 
 const SOLANA_EID = 30168
 const ROBINHOOD_EID = 30416
@@ -263,6 +264,7 @@ export const scanSolana = async (
         blockAt(connection, toSlot),
         connection.getGenesisHash(),
     ])
+    requireSolanaMainnet(genesisHash)
     const program = new PublicKey(PRODUCTION_SOLANA_OFT_PROGRAM)
     const signatures: Array<{ signature: string; slot: number }> = []
     let before: string | undefined
@@ -304,8 +306,10 @@ export const scanSolana = async (
                 if (
                     !packet ||
                     packet.srcEid() !== SOLANA_EID ||
+                    packet.dstEid() !== ROBINHOOD_EID ||
                     packet.sender().toLowerCase() !==
-                        ethers.utils.hexlify(new PublicKey(solanaStore).toBytes()).toLowerCase()
+                        ethers.utils.hexlify(new PublicKey(solanaStore).toBytes()).toLowerCase() ||
+                    packet.receiverAddressB20().toLowerCase() !== robinhoodOft.toLowerCase()
                 ) {
                     throw new Error(`Solana OFTSent lacks matching Endpoint packet evidence: ${event.guid}`)
                 }
@@ -432,7 +436,10 @@ export const scanRobinhood = async (
                 if (
                     !packet ||
                     packet.srcEid() !== ROBINHOOD_EID ||
-                    packet.senderAddressB20().toLowerCase() !== robinhoodOft.toLowerCase()
+                    packet.dstEid() !== SOLANA_EID ||
+                    packet.senderAddressB20().toLowerCase() !== robinhoodOft.toLowerCase() ||
+                    packet.receiver().toLowerCase() !==
+                        ethers.utils.hexlify(new PublicKey(solanaStore).toBytes()).toLowerCase()
                 )
                     throw new Error(`Robinhood OFTSent lacks matching Endpoint packet evidence: ${parsed.args.guid}`)
                 sent.push({

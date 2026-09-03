@@ -136,15 +136,17 @@ Solana inbound: decrease tvl_ld and release escrowed SAN
 
 The proposed security stack uses explicit send/receive libraries, Executors,
 peers, enforced options, and any-two-of-three DVN verification. Defaults and the
-deprecated Dead DVN must not be inherited. Robinhood-source finality remains an
-unresolved launch decision; a count of fast L2 blocks must not be presented as
-Ethereum economic finality.
+deprecated Dead DVN must not be inherited. Phase 5A.4 freezes Robinhood-source
+depth at 30 L2 blocks and Solana-source depth at 32. Thirty Robinhood blocks are
+not Ethereum finality, Nitro challenge completion, or proof of finalized L1
+posting.
 
 Four rate-limit controls are mandatory: Solana outbound/inbound and Robinhood
 outbound/inbound. Current unapplied planning profiles are 500,000 SAN for the
-canary, 30,000,000 SAN for early public operation, and 50,000,000 SAN for normal
-operation per direction and refill period. These are risk proposals, not live
-settings or launch authorization.
+canary, 30,000,000 SAN for early public operation, 50,000,000 SAN for normal
+operation, and 100,000,000 SAN for a later mature profile per direction and
+refill period. These are risk proposals, not live settings or launch
+authorization.
 
 ## Testnet evidence
 
@@ -220,10 +222,11 @@ Before Phase 5B, the project still requires at least:
 - independent approval of the reproducible Solana artifact and recorded
   ELF/executable hashes;
 - independent review of the exact production commit and artifacts;
-- an approved Robinhood finality/confirmation policy;
+- independent acceptance of the frozen 30-block Robinhood source-depth policy
+  and its explicit non-finality assumptions;
 - fresh LayerZero metadata and DVN/Executor review;
 - final Squads/Safe identities, signer separation, and recovery policy;
-- fresh market/liquidity review of rate limits;
+- independent approval of the frozen market/liquidity rate-limit analysis;
 - independent review of the Phase 5A.3 common-context checker and in-flight
   scanner, followed by approval of a live manifest and provider independence;
 - a separate explicit authorization for every production transaction.
