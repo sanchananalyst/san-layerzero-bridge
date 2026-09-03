@@ -95,12 +95,13 @@ external security review. It does not claim formal audit completion.
 
 ## M. Commit SHA
 
-The publication commit is the commit containing this report on
-`production/phase5a1`, with commit message
-`docs: publish Phase 5A.4 production policy`. A Git commit cannot embed its own
-SHA without changing that SHA; resolve the immutable value with
-`git rev-parse production/phase5a1`. The exact resulting SHA is also recorded in
-the final publication output and GitHub Issue #1.
+The requested publication commit is
+`1fdf0ccfad95ec373b56807233b24c741f64c388`, with commit message
+`docs: publish Phase 5A.4 production policy`. Documentation-only follow-up
+`11adfa753be3dbfd5987da780131c58befa3324b` adds the explicit sentence “This is
+not a formal external audit” to the auditor handoff. The final report-only commit
+is the public branch HEAD; resolve it with `git rev-parse production/phase5a1`
+because a commit cannot embed its own SHA without changing that SHA.
 
 ## N. Push result
 
