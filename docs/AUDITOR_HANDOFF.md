@@ -13,6 +13,7 @@ is superseded because it did not contain the fail-closed activation boundary.
 Phase 5A.4 is pre-mainnet. **PRODUCTION BRIDGE CODE FROZEN.** No production program, contract, Store, escrow, peer,
 security configuration, multisig, or liquidity exists. Later documentation-only
 commits do not change the code target. This package does not authorize Phase 5B.
+**This is not a formal external audit.**
 
 Both applications now initialize bridge-paused. They must remain paused through
 wiring, complete security configuration, governance handoff, and independent
