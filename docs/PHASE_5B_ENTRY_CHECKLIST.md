@@ -1,0 +1,42 @@
+# Phase 5B Entry Checklist
+
+## Gate status
+
+**CLOSED. Phase 5A.5 does not authorize or automatically unblock Phase 5B.**
+
+Every gate below defaults to FAIL until its named evidence exists, is current,
+and has explicit human approval. A local test or production-checker PASS is
+necessary evidence but never transaction authorization. Any unresolved
+Critical/High finding, unexplained state drift, stale metadata, or incomplete
+field keeps the gate closed.
+
+## Required PASS gates
+
+| Gate                               | PASS criterion                                                                                                                                                                                            | Required evidence and approvers                                                                                                    | Status                                                                                  |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| External review                    | Independent reviewers have assessed the exact code, build artifacts, governance, LayerZero configuration, and runbooks with no unresolved Critical/High finding                                           | Final signed audit/review report naming audit target `d28762288bb5180ff292f57eef7132191f2037ec`; Solana, EVM, and LayerZero owners | **FAIL — outstanding**                                                                  |
+| Governance threat model            | Every authority-compromise path, cross-role escalation, maximum loss, monitoring, and response has been reviewed and accepted                                                                             | `docs/PRODUCTION_GOVERNANCE_THREAT_MODEL.md`; governance security owner and independent reviewer                                   | **FAIL — document prepared, human review absent**                                       |
+| Safe/Squads identities             | Exact nonzero checksummed Safe, Squads multisig, vault index, derived vaults, role bindings, and forbidden deployer identities are approved                                                               | Signed ceremony manifest; independent derivations; two-provider finalized read-back                                                | **FAIL — production identities do not exist**                                           |
+| Signer thresholds and independence | Exact threshold, complete owner/member/voter sets, permissions, device/organization/geography separation, modules/guard/fallback, recovery and offboarding are approved and drilled                       | Signed signer roster and drill record; governance plus independent security reviewer                                               | **FAIL — identities/evidence absent**                                                   |
+| Handoff ceremony                   | High-risk single-step handoff procedure, ordering, two-person verification, abort/lockout contingency, and post-transfer read-back are approved                                                           | `docs/GOVERNANCE_HANDOFF_RUNBOOK.md`; ceremony lead, incident commander, independent verifier                                      | **FAIL — runbook prepared, no ceremony authorized/performed**                           |
+| Governance monitoring              | Every required change has a named primary/backup owner, two independent data paths, paging SLA, evidence retention, and successful drill                                                                  | `docs/GOVERNANCE_MONITORING_SPEC.md`; monitoring and incident-response owners                                                      | **FAIL — specification only**                                                           |
+| Production checker                 | Checker fails closed on exact roles, observable Safe/Squads signer state, nonzero identities, no deployer signer/role, hashes/config/accounting, and paused handoff; results repeat across provider pairs | `scripts/checkProductionMainnet.ts`; policy tests; archived `PRE_ACTIVATION_INERT` output from two independent provider pairs      | **FAIL — local implementation passes; live state unavailable**                          |
+| Rate-limit policy                  | Four-direction burst/refill economics and the selected profile are explicitly approved                                                                                                                    | `docs/FINAL_RATE_LIMIT_ANALYSIS.md`; `docs/PRODUCTION_RATE_LIMIT_POLICY.md`; treasury/risk committee                               | **FAIL — policy frozen, independent approval outstanding**                              |
+| Finality policy                    | Reviewers accept Solana and Robinhood source-depth/finality assumptions and exact checker values                                                                                                          | `docs/ROBINHOOD_FINALITY_EVIDENCE.md`; `docs/ROBINHOOD_FINALITY_POLICY.md`; bridge security and DVN reviewers                      | **FAIL — independent risk acceptance outstanding**                                      |
+| LayerZero metadata freshness       | Endpoint, EIDs, libraries, DVNs, Executor, confirmations, options, and pathway defaults are refreshed from current official production metadata and independently compared                                | Dated metadata export, exact configuration manifest, two-person review, finalized read-back                                        | **FAIL — application addresses absent; refresh required immediately before action**     |
+| Code and bytecode identity         | Production bridge source is unchanged from the audit target; reproducible artifacts/hashes match the reviewed and later deployed code                                                                     | Git tree/diff evidence, two clean build records, runtime and ProgramData hashes, independent reproducer approval                   | **FAIL — local source unchanged; live deployment equivalence impossible predeployment** |
+| Tooling/signing isolation          | Alert risks are accepted or excluded; pinned/reproducible tooling, trusted RPCs, no untrusted inputs, isolated signer devices, and egress controls are ready                                              | `docs/PRODUCTION_TOOLING_RISK.md`; signing-environment checklist and independent dry run                                           | **FAIL — requirements specified, ceremony evidence absent**                             |
+| Backing and zero/in-flight state   | Mint/escrow/Store/OFT identities, supply, TVL, escrow, and complete in-flight inventory satisfy exact accounting at finalized anchors                                                                     | Dual-provider scanner manifest and checker outputs; treasury plus independent reviewer                                             | **FAIL — production applications do not exist**                                         |
+| Explicit Phase 5B authorization    | A later human authorization identifies exact transactions, chains, addresses, signers, limits, stop conditions, and rollback/lockout response                                                             | Signed go/no-go record separate from every technical PASS                                                                          | **FAIL — not granted**                                                                  |
+
+## Ceremony-specific stop conditions
+
+Before any future authority transfer, the checker must pass
+`PRE_ACTIVATION_INERT`; both applications must be paused. `CANARY_ACTIVE` is
+never acceptable for handoff. A one-sided pause, missing signer-state evidence,
+address/threshold mismatch, deployer signer, RPC disagreement, or missing
+post-transfer read-back is an immediate stop.
+
+Unpause is a separate later decision. Completing deployment, configuration, or
+handoff does not imply activation approval, and changing this checklist's text
+or status does not itself create authorization.

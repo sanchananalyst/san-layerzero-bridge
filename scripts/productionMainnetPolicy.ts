@@ -22,6 +22,7 @@ export const PRODUCTION_SOLANA_ENDPOINT = '76y77prsiCMvXMjuoZ5VRrhG5qYBrUMYTE5Wg
 export const PRODUCTION_ROBINHOOD_ENDPOINT = '0x6f475642a6e85809b1c36fa62763669b1b48dd5b'
 export const PRODUCTION_SOLANA_OFT_PROGRAM = '9myHzfqsbJfGbYxpCvVCYqLaB4Co1RCo2a8T4QSkTvcD'
 export const SOLANA_UPGRADEABLE_LOADER = 'BPFLoaderUpgradeab1e11111111111111111111111'
+export const PRODUCTION_SQUADS_PROGRAM = 'SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf'
 
 export enum ProductionExpectedState {
     PRE_ACTIVATION_INERT = 'PRE_ACTIVATION_INERT',
@@ -50,6 +51,13 @@ export interface ApprovedProductionState extends ProductionAuthorityPolicy {
     expectedSolanaFreezeAuthority: string | null
     forbiddenSolanaBootstrapAuthorities: string[]
     forbiddenRobinhoodBootstrapAuthorities: string[]
+    solanaSquadsMultisig: string
+    solanaSquadsVaultIndex: number
+    solanaSquadsThreshold: number
+    solanaSquadsMembers: string[]
+    solanaSquadsVoters: string[]
+    robinhoodSafeThreshold: number
+    robinhoodSafeOwners: string[]
     expectedSolanaProgramData: string
     expectedSolanaProgramDataSha256: string
     expectedSolanaEndpointProgramData: string
@@ -93,6 +101,12 @@ export interface ProductionMainnetObservation {
         upgradeAuthority: string
         storeAdmin: string
         delegate: string
+        squadsMultisig: string
+        squadsVault: string
+        squadsProgramOwner: string
+        squadsThreshold: number
+        squadsMembers: string[]
+        squadsVotingMembers: string[]
         paused: boolean
         pauser: string | null
         unpauser: string | null
@@ -126,6 +140,8 @@ export interface ProductionMainnetObservation {
         totalSupplyRaw: bigint
         owner: string
         delegate: string
+        safeThreshold: number
+        safeOwners: string[]
         paused: boolean
         runtimeCodeHash: string
         proxyImplementation: string | null
@@ -178,6 +194,7 @@ const validateSolanaContextEvidence = (evidence: SolanaCommonContextEvidence): v
         'LayerZero Endpoint ProgramData',
         'LayerZero ULN302 program',
         'LayerZero ULN302 ProgramData',
+        'Solana Squads multisig',
         'Endpoint OApp registry',
         'Endpoint default send-library config',
         'Endpoint app send-library config',
@@ -220,9 +237,10 @@ const equalEvmAddress = (actual: string, expected: string, label: string): void 
 
 const requireSolanaAddress = (value: string, label: string): void => {
     try {
-        new PublicKey(value)
+        const address = new PublicKey(value)
+        if (address.equals(PublicKey.default)) throw new Error('zero address')
     } catch {
-        throw new Error(`${label} is not a valid Solana public key`)
+        throw new Error(`${label} is not a nonzero Solana public key`)
     }
 }
 
@@ -240,6 +258,38 @@ const isSameSolanaAddress = (left: string, right: string): boolean => new Public
 
 const isSameEvmAddress = (left: string, right: string): boolean =>
     ethers.utils.getAddress(left) === ethers.utils.getAddress(right)
+
+const requireUniqueSolanaAddresses = (values: string[], label: string): void => {
+    if (values.length === 0) throw new Error(`${label} must contain at least one address`)
+    const normalized = values.map((value, index) => {
+        requireSolanaAddress(value, `${label} ${index}`)
+        return new PublicKey(value).toBase58()
+    })
+    if (new Set(normalized).size !== normalized.length) throw new Error(`${label} contains a duplicate address`)
+}
+
+const requireUniqueEvmAddresses = (values: string[], label: string): void => {
+    if (values.length === 0) throw new Error(`${label} must contain at least one address`)
+    const normalized = values.map((value, index) => {
+        requireEvmAddress(value, `${label} ${index}`)
+        return ethers.utils.getAddress(value)
+    })
+    if (new Set(normalized).size !== normalized.length) throw new Error(`${label} contains a duplicate address`)
+}
+
+const equalSolanaAddressSets = (actual: string[], expected: string[], label: string): void => {
+    const normalize = (values: string[]) => values.map((value) => new PublicKey(value).toBase58()).sort()
+    if (JSON.stringify(normalize(actual)) !== JSON.stringify(normalize(expected))) {
+        throw new Error(`${label} differs from the approved set`)
+    }
+}
+
+const equalEvmAddressSets = (actual: string[], expected: string[], label: string): void => {
+    const normalize = (values: string[]) => values.map((value) => ethers.utils.getAddress(value)).sort()
+    if (JSON.stringify(normalize(actual)) !== JSON.stringify(normalize(expected))) {
+        throw new Error(`${label} differs from the approved set`)
+    }
+}
 
 const bytes32FromSolana = (address: string): string =>
     ethers.utils.hexlify(new PublicKey(address).toBytes()).toLowerCase()
@@ -263,6 +313,7 @@ const validateApprovedState = (approved: ApprovedProductionState): void => {
         ['approved Solana delegate', approved.solanaDelegate],
         ['approved Solana pauser', approved.solanaPauser],
         ['approved Solana unpauser', approved.solanaUnpauser],
+        ['approved Solana Squads multisig', approved.solanaSquadsMultisig],
         ['approved Solana ProgramData', approved.expectedSolanaProgramData],
         ['approved LayerZero Endpoint ProgramData', approved.expectedSolanaEndpointProgramData],
         ['approved LayerZero Endpoint upgrade authority', approved.expectedSolanaEndpointUpgradeAuthority],
@@ -274,6 +325,40 @@ const validateApprovedState = (approved: ApprovedProductionState): void => {
     requireEvmAddress(approved.robinhoodOft, 'approved Robinhood OFT')
     requireEvmAddress(approved.robinhoodOwner, 'approved Robinhood owner')
     requireEvmAddress(approved.robinhoodDelegate, 'approved Robinhood delegate')
+    if (!isSameEvmAddress(approved.robinhoodOwner, approved.robinhoodDelegate)) {
+        throw new Error('Approved Robinhood owner and delegate must be the same Safe')
+    }
+    if (
+        !Number.isSafeInteger(approved.solanaSquadsVaultIndex) ||
+        approved.solanaSquadsVaultIndex < 0 ||
+        approved.solanaSquadsVaultIndex > 255
+    ) {
+        throw new Error('Approved Solana Squads vault index must be an integer from 0 through 255')
+    }
+    requireUniqueSolanaAddresses(approved.solanaSquadsMembers, 'approved Solana Squads members')
+    requireUniqueSolanaAddresses(approved.solanaSquadsVoters, 'approved Solana Squads voting members')
+    if (
+        !approved.solanaSquadsVoters.every((voter) =>
+            approved.solanaSquadsMembers.some((member) => isSameSolanaAddress(voter, member))
+        )
+    ) {
+        throw new Error('Every approved Solana Squads voter must be an approved member')
+    }
+    if (
+        !Number.isSafeInteger(approved.solanaSquadsThreshold) ||
+        approved.solanaSquadsThreshold < 2 ||
+        approved.solanaSquadsThreshold > approved.solanaSquadsVoters.length
+    ) {
+        throw new Error('Approved Solana Squads threshold must require multiple signers and fit the voting-member set')
+    }
+    requireUniqueEvmAddresses(approved.robinhoodSafeOwners, 'approved Robinhood Safe owners')
+    if (
+        !Number.isSafeInteger(approved.robinhoodSafeThreshold) ||
+        approved.robinhoodSafeThreshold < 2 ||
+        approved.robinhoodSafeThreshold > approved.robinhoodSafeOwners.length
+    ) {
+        throw new Error('Approved Robinhood Safe threshold must require multiple signers and fit the owner set')
+    }
     requireHash(approved.expectedSolanaProgramDataSha256, 'approved Solana ProgramData SHA-256')
     requireHash(approved.expectedSolanaEndpointProgramDataSha256, 'approved LayerZero Endpoint ProgramData SHA-256')
     requireHash(approved.expectedSolanaUlnProgramDataSha256, 'approved LayerZero ULN302 ProgramData SHA-256')
@@ -510,12 +595,29 @@ export function validateProductionMainnetObservation(
     equalSolanaAddress(observation.solana.upgradeAuthority, approved.solanaUpgradeAuthority, 'Solana upgrade authority')
     equalSolanaAddress(observation.solana.storeAdmin, approved.solanaStoreAdmin, 'Solana Store admin')
     equalSolanaAddress(observation.solana.delegate, approved.solanaDelegate, 'Solana delegate')
+    equalSolanaAddress(observation.solana.squadsMultisig, approved.solanaSquadsMultisig, 'Solana Squads multisig')
+    equalSolanaAddress(observation.solana.squadsVault, approved.solanaStoreAdmin, 'Solana Squads operations vault')
+    equalSolanaAddress(observation.solana.squadsVault, approved.solanaDelegate, 'Solana delegate Squads vault')
+    equalSolanaAddress(observation.solana.squadsProgramOwner, PRODUCTION_SQUADS_PROGRAM, 'Solana Squads account owner')
+    if (observation.solana.squadsThreshold !== approved.solanaSquadsThreshold) {
+        throw new Error('Solana Squads threshold differs from the approved value')
+    }
+    equalSolanaAddressSets(observation.solana.squadsMembers, approved.solanaSquadsMembers, 'Solana Squads members')
+    equalSolanaAddressSets(
+        observation.solana.squadsVotingMembers,
+        approved.solanaSquadsVoters,
+        'Solana Squads voting members'
+    )
     if (observation.solana.pauser == null) throw new Error('Solana pauser is not configured')
     if (observation.solana.unpauser == null) throw new Error('Solana unpauser is not configured')
     equalSolanaAddress(observation.solana.pauser, approved.solanaPauser, 'Solana pauser')
     equalSolanaAddress(observation.solana.unpauser, approved.solanaUnpauser, 'Solana unpauser')
     equalEvmAddress(observation.robinhood.owner, approved.robinhoodOwner, 'Robinhood owner')
     equalEvmAddress(observation.robinhood.delegate, approved.robinhoodDelegate, 'Robinhood delegate')
+    if (observation.robinhood.safeThreshold !== approved.robinhoodSafeThreshold) {
+        throw new Error('Robinhood Safe threshold differs from the approved value')
+    }
+    equalEvmAddressSets(observation.robinhood.safeOwners, approved.robinhoodSafeOwners, 'Robinhood Safe owners')
 
     const solanaPrivileged = [
         observation.solana.upgradeAuthority,
@@ -528,11 +630,17 @@ export function validateProductionMainnetObservation(
         if (solanaPrivileged.some((authority) => isSameSolanaAddress(authority, bootstrap))) {
             throw new Error('A Solana privileged role is still controlled by a forbidden bootstrap authority')
         }
+        if (observation.solana.squadsMembers.some((member) => isSameSolanaAddress(member, bootstrap))) {
+            throw new Error('A forbidden Solana bootstrap authority remains a Squads member')
+        }
     }
     const robinhoodPrivileged = [observation.robinhood.owner, observation.robinhood.delegate]
     for (const bootstrap of approved.forbiddenRobinhoodBootstrapAuthorities) {
         if (robinhoodPrivileged.some((authority) => isSameEvmAddress(authority, bootstrap))) {
             throw new Error('A Robinhood privileged role is still controlled by a forbidden bootstrap authority')
+        }
+        if (observation.robinhood.safeOwners.some((owner) => isSameEvmAddress(owner, bootstrap))) {
+            throw new Error('A forbidden Robinhood bootstrap authority remains a Safe owner')
         }
     }
 

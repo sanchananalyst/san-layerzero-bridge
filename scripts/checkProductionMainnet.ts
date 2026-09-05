@@ -4,6 +4,7 @@ import { readFileSync } from 'fs'
 import { publicKey, unwrapOption } from '@metaplex-foundation/umi'
 import { unpackAccount, unpackMint } from '@solana/spl-token'
 import { Connection, PublicKey } from '@solana/web3.js'
+import * as squads from '@sqds/multisig'
 import { ethers } from 'ethers'
 
 import { EndpointPDADeriver, EndpointProgram } from '@layerzerolabs/lz-solana-sdk-v2'
@@ -44,6 +45,13 @@ const requiredBigInt = (name: string): bigint => {
     const value = requiredEnv(name)
     if (!/^\d+$/.test(value)) throw new Error(`${name} must be an unsigned base-10 integer`)
     return BigInt(value)
+}
+
+const requiredNumber = (name: string): number => {
+    const value = requiredBigInt(name)
+    const number = Number(value)
+    if (!Number.isSafeInteger(number)) throw new Error(`${name} must be a safe integer`)
+    return number
 }
 
 const requiredList = (name: string): string[] => {
@@ -117,6 +125,13 @@ const approvedStateFromEnv = (): ApprovedProductionState => ({
     expectedSolanaFreezeAuthority: optionalSolanaAuthority('SAN_EXPECTED_SOLANA_FREEZE_AUTHORITY'),
     forbiddenSolanaBootstrapAuthorities: requiredList('SAN_FORBIDDEN_SOLANA_BOOTSTRAP_AUTHORITIES'),
     forbiddenRobinhoodBootstrapAuthorities: requiredList('SAN_FORBIDDEN_ROBINHOOD_BOOTSTRAP_AUTHORITIES'),
+    solanaSquadsMultisig: requiredEnv('SAN_SOLANA_SQUADS_MULTISIG'),
+    solanaSquadsVaultIndex: requiredNumber('SAN_SOLANA_SQUADS_VAULT_INDEX'),
+    solanaSquadsThreshold: requiredNumber('SAN_SOLANA_SQUADS_THRESHOLD'),
+    solanaSquadsMembers: requiredList('SAN_SOLANA_SQUADS_MEMBERS'),
+    solanaSquadsVoters: requiredList('SAN_SOLANA_SQUADS_VOTERS'),
+    robinhoodSafeThreshold: requiredNumber('SAN_ROBINHOOD_SAFE_THRESHOLD'),
+    robinhoodSafeOwners: requiredList('SAN_ROBINHOOD_SAFE_OWNERS'),
     expectedSolanaProgramData: requiredEnv('SAN_SOLANA_PROGRAM_DATA'),
     expectedSolanaProgramDataSha256: requiredEnv('SAN_SOLANA_PROGRAM_DATA_SHA256'),
     expectedSolanaEndpointProgramData: requiredEnv('SAN_SOLANA_ENDPOINT_PROGRAM_DATA'),
@@ -174,6 +189,11 @@ export const collectProductionMainnetObservation = async (
     const ulnProgramDataAddress = new PublicKey(approved.expectedSolanaUlnProgramData)
     const escrowAddress = new PublicKey(approved.solanaEscrow)
     const mintAddress = new PublicKey(CANONICAL_SAN_MINT)
+    const squadsMultisigAddress = new PublicKey(approved.solanaSquadsMultisig)
+    const [squadsVaultAddress] = squads.getVaultPda({
+        multisigPda: squadsMultisigAddress,
+        index: approved.solanaSquadsVaultIndex,
+    })
     const epDeriver = new EndpointPDADeriver(EndpointProgram.PROGRAM_ID)
     const [oappRegistryAddress] = epDeriver.oappRegistry(storeAddress)
     const layerZeroContextAccounts = solanaLayerZeroContextAccounts(approved.solanaOftStore)
@@ -187,6 +207,7 @@ export const collectProductionMainnetObservation = async (
         { label: 'LayerZero Endpoint ProgramData', address: endpointProgramDataAddress },
         { label: 'LayerZero ULN302 program', address: SOLANA_ULN_PROGRAM },
         { label: 'LayerZero ULN302 ProgramData', address: ulnProgramDataAddress },
+        { label: 'Solana Squads multisig', address: squadsMultisigAddress },
         ...layerZeroContextAccounts,
     ])
     requireAccountOwner(solanaSnapshot.account(storeAddress), programAddress, 'OFT Store')
@@ -256,6 +277,9 @@ export const collectProductionMainnetObservation = async (
     const oappRegistry = EndpointProgram.accounts.OAppRegistry.fromAccountInfo(
         solanaSnapshot.account(oappRegistryAddress)
     )[0]
+    const squadsMultisigInfo = solanaSnapshot.account(squadsMultisigAddress)
+    requireAccountOwner(squadsMultisigInfo, squads.PROGRAM_ID, 'Solana Squads multisig')
+    const squadsMultisig = squads.accounts.Multisig.fromAccountInfo(squadsMultisigInfo)[0]
 
     const oftContract = new ethers.Contract(
         approved.robinhoodOft,
@@ -277,6 +301,11 @@ export const collectProductionMainnetObservation = async (
         ['function delegates(address) view returns(address)'],
         provider
     )
+    const safeContract = new ethers.Contract(
+        approved.robinhoodOwner,
+        ['function getThreshold() view returns(uint256)', 'function getOwners() view returns(address[])'],
+        provider
+    )
     const [
         solanaGenesisHash,
         robinhoodOwner,
@@ -289,6 +318,8 @@ export const collectProductionMainnetObservation = async (
         robinhoodInbound,
         solanaReceiveOptions,
         robinhoodDelegate,
+        robinhoodSafeThreshold,
+        robinhoodSafeOwners,
         runtimeCode,
         implementationSlot,
         adminSlot,
@@ -306,6 +337,8 @@ export const collectProductionMainnetObservation = async (
         oftContract.inboundRateLimit(evmCall),
         oftContract.enforcedOptions(SOLANA_EID, 1, evmCall),
         endpointContract.delegates(approved.robinhoodOft, evmCall),
+        safeContract.getThreshold(evmCall),
+        safeContract.getOwners(evmCall),
         provider.getCode(approved.robinhoodOft, robinhoodBlockTag),
         provider.getStorageAt(approved.robinhoodOft, EIP1967_IMPLEMENTATION_SLOT, robinhoodBlockTag),
         provider.getStorageAt(approved.robinhoodOft, EIP1967_ADMIN_SLOT, robinhoodBlockTag),
@@ -349,6 +382,14 @@ export const collectProductionMainnetObservation = async (
             upgradeAuthority: parsedProgramData.upgradeAuthority,
             storeAdmin: store.admin.toString(),
             delegate: oappRegistry.delegate.toBase58(),
+            squadsMultisig: squadsMultisigAddress.toBase58(),
+            squadsVault: squadsVaultAddress.toBase58(),
+            squadsProgramOwner: squadsMultisigInfo.owner.toBase58(),
+            squadsThreshold: squadsMultisig.threshold,
+            squadsMembers: squadsMultisig.members.map((member) => member.key.toBase58()),
+            squadsVotingMembers: squadsMultisig.members
+                .filter((member) => squads.types.Permissions.has(member.permissions, squads.types.Permission.Vote))
+                .map((member) => member.key.toBase58()),
             paused: store.paused,
             pauser: unwrapOption(store.pauser, () => null)?.toString() ?? null,
             unpauser: unwrapOption(store.unpauser, () => null)?.toString() ?? null,
@@ -382,6 +423,8 @@ export const collectProductionMainnetObservation = async (
             totalSupplyRaw: BigInt(robinhoodSupply.toString()),
             owner: robinhoodOwner,
             delegate: robinhoodDelegate,
+            safeThreshold: Number(robinhoodSafeThreshold.toString()),
+            safeOwners: robinhoodSafeOwners.map((owner: string) => ethers.utils.getAddress(owner)),
             paused: robinhoodPaused,
             runtimeCodeHash: ethers.utils.keccak256(runtimeCode),
             proxyImplementation: addressFromStorage(implementationSlot),

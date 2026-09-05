@@ -28,12 +28,18 @@ The checker reads and validates:
 - Solana Store pause state, pauser, unpauser, admin, Endpoint delegate, program
   executable flag, upgradeable-loader owner, ProgramData address, ProgramData
   owner/non-executable state, upgrade authority, and executable SHA-256;
+- the approved Squads v4 multisig account, its program owner, exact complete
+  member and voting-member sets, threshold, and vault PDA derived from the
+  approved vault index; that vault must be both Store admin and Endpoint
+  delegate;
 - escrow account program ownership, canonical mint, Store authority, balance,
   and Store TVL; the decoded Store's immutable token mint and escrow must equal
   canonical SAN and the approved escrow, and the Store must be the production
   `OFT` PDA derived from that escrow;
-- Robinhood pause state, owner, Endpoint delegate, runtime bytecode hash, and
-  EIP-1967 implementation/admin slots; any proxy slot is rejected;
+- Robinhood pause state, owner, Endpoint delegate, Safe threshold, exact Safe
+  owner set, runtime bytecode hash, and EIP-1967 implementation/admin slots; the
+  same approved Safe must be owner and delegate, and any SanOFT proxy slot is
+  rejected;
 - exact bidirectional peers, explicitly app-selected send/receive libraries,
   raw non-inherited ULN configs, DVNs, thresholds, Executor, confirmations, and
   enforced receive options;
@@ -49,10 +55,15 @@ The checker reads and validates:
 - every privileged role differs from all explicitly supplied bootstrap/deployer
   identities.
 
-Squads/Safe threshold, membership, modules, guards, signer independence, and
-recovery policy are not derivable from a role-address comparison. They remain a
-separate signed governance-evidence gate; the checker must not be described as
-verifying them.
+The checker now reads observable Squads threshold/membership/permissions and
+Safe threshold/owners at the pinned chain snapshots. It still cannot prove
+signer-device independence, beneficial ownership, geographic or employer
+separation, recovery/offboarding readiness, or the review quality of a pending
+proposal. Safe modules, guards, and fallback handlers also remain a separate
+signed governance-evidence gate. If the upgrade authority uses a different
+multisig from the operations Squads, the checker exact-matches its vault address
+but does not currently decode that second multisig's internal threshold or
+members; separate signed evidence is mandatory.
 
 The exact accounting identity is:
 
@@ -70,8 +81,8 @@ the fee-withdrawal policy.
 
 Every blank in `.env.example` is deliberate. Values must be copied from reviewed
 governance, reproducible-build, finality, and deployment records. The checker
-does not infer a multisig, confirmation count, deployment address, or bytecode
-hash.
+does not infer a multisig, signer set, threshold, confirmation count, deployment
+address, or bytecode hash.
 
 Phase 5A.4 freezes Robinhood-source confirmations at 30 and Solana-source
 confirmations at 32. `SAN_RATE_LIMIT_PROFILE` is mandatory and accepts only the
@@ -122,11 +133,13 @@ and exact accounting provide the additional fail-closed guard. RPC providers
 must be operationally independent; merely using two URLs for one backend does
 not satisfy the human evidence requirement.
 
-Before initial activation, archive successful `PRE_ACTIVATION_INERT` results
-from two provider pairs. Unpause Robinhood first only while Robinhood supply and
-both in-flight directions are zero. If the ceremony is interrupted, re-pause
-Robinhood and stop. Unpause Solana last; that Solana transaction is the public
-activation boundary. Archive successful `CANARY_ACTIVE` results immediately.
+Every authority handoff must occur only while `PRE_ACTIVATION_INERT` passes;
+`CANARY_ACTIVE` is not a valid handoff state. Before initial activation, archive
+successful `PRE_ACTIVATION_INERT` results from two provider pairs. Unpause
+Robinhood first only while Robinhood supply and both in-flight directions are
+zero. If the ceremony is interrupted, re-pause Robinhood and stop. Unpause
+Solana last; that Solana transaction is the public activation boundary. Archive
+successful `CANARY_ACTIVE` results immediately.
 This state is a bounded public canary window, not an exclusive one-message lane.
 Any later reactivation with nonzero settled or in-flight state requires a
 separately reviewed protocol and is rejected by `CANARY_ACTIVE`.

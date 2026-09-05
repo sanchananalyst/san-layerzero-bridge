@@ -15,6 +15,11 @@ offboarding. No signer identity or multisig address is supplied or invented in
 Phase 5A.1. For stronger separation, the Solana upgrade authority may use a
 distinct 4-of-7 body, but only if drills meet the required response latency.
 
+The exact high-risk transfer ceremony is defined in
+`docs/GOVERNANCE_HANDOFF_RUNBOOK.md`; compromise consequences and required
+alerts are defined in `docs/PRODUCTION_GOVERNANCE_THREAT_MODEL.md` and
+`docs/GOVERNANCE_MONITORING_SPEC.md`.
+
 ## Threshold comparison
 
 | Threshold  | Key loss tolerated | One compromised | Two compromised | Collusion threshold | Response latency              |
@@ -73,3 +78,9 @@ reviewers, and whether roles share a multisig. Run key-loss,
 compromised-signer, malicious-proposal, pause, rejected-unpause, and replacement
 drills off production. Every future action must record decoded calls,
 simulations, signers, before/after state, and an independent read-back.
+
+The current single-step ownership/admin transfers create a tracked MEDIUM
+lockout risk. Phase 5A.5 does not add `Ownable2Step` or new roles; the current
+mitigation is paused handoff, independent address derivation, two-person review,
+immediate read-back, and no activation until checker PASS. A future audited
+revision should evaluate nominate-and-accept semantics.

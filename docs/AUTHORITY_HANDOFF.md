@@ -4,11 +4,17 @@
 
 Before public bridging:
 
-- the **Solana SAN multisig vault PDA** controls OFT Store admin, Endpoint/OApp delegate, and program upgrade authority;
+- the **Solana SAN operations multisig vault PDA** controls OFT Store admin and Endpoint/OApp delegate;
+- the program upgrade authority is the exact separately approved upgrade vault
+  (a distinct 4-of-7 body is preferred if its drilled response latency is
+  acceptable; any shared vault requires explicit risk acceptance);
 - the **Robinhood SAN Safe** controls `SanOFT` ownership and the Endpoint/OApp delegate; and
 - no deployer, transaction payer, workstation wallet, or generated program identity retains a governance role.
 
-No authority exists on-chain in Phase 3 because the program, OFT Store, and `SanOFT` are not deployed. Every command below is proposed for a later approved phase and contains placeholders.
+No application authority exists on-chain because the OFT Store and `SanOFT` are
+not deployed. Every command below is proposed for a later approved phase and
+contains placeholders. The controlling ceremony and lockout procedure is
+`docs/GOVERNANCE_HANDOFF_RUNBOOK.md`.
 
 ## Supported authority mechanisms
 
@@ -47,7 +53,7 @@ The BPF Upgradeable Loader stores this authority independently of the OFT Store.
 ```bash
 solana program set-upgrade-authority \
   9myHzfqsbJfGbYxpCvVCYqLaB4Co1RCo2a8T4QSkTvcD \
-  --new-upgrade-authority <SOLANA_SAN_MULTISIG_VAULT_PDA> \
+  --new-upgrade-authority <SOLANA_APPROVED_UPGRADE_VAULT_PDA> \
   --upgrade-authority <CURRENT_UPGRADE_AUTHORITY_SIGNER> \
   --skip-new-upgrade-authority-signer-check \
   --url <VERIFIED_SOLANA_MAINNET_RPC>
@@ -83,7 +89,10 @@ All addresses, bytecode, hashes, multisig thresholds, and proposal calldata must
 5. Keep the Adapter globally paused. Configure and read back peer, explicit ULN libraries/configs, enforced options, rate limits, pause roles, and zero/default fees while the bootstrap admin still has authority.
 6. Submit the SDK `Delegate` instruction to set the Solana Endpoint/OApp delegate to `<SOLANA_SAN_MULTISIG_VAULT_PDA>`. Read it back.
 7. Submit the SDK `Admin` instruction **last among OFT Store admin actions** to set `OFTStore.admin` to the same multisig vault. Read it back and prove the deployer can no longer authorize an admin instruction.
-8. Transfer the Solana program upgrade authority to the same verified multisig vault PDA. Read the loader state back and prove the deployer is no longer authority.
+8. Transfer the Solana program upgrade authority to the exact approved upgrade
+   vault PDA. This may equal the operations vault only after explicit correlated
+   risk acceptance. Read the loader state back and prove the deployer is no
+   longer authority.
 9. Deploy `SanOFT` with `<ROBINHOOD_SAN_SAFE>` as `delegate_`, making the Safe owner and delegate immediately. If and only if temporary ownership is unavoidable, execute `setDelegate(Safe)` then `transferOwnership(Safe)` and read both back.
 10. From both multisigs, execute harmless/read-only governance drills and prepare—but do not yet exercise—the pause/rollback procedures.
 11. Independently derive the Squads vault and Safe address, then inspect and
@@ -142,7 +151,9 @@ solana program show \
   --output json
 ```
 
-Expected `authority`: `<SOLANA_SAN_MULTISIG_VAULT_PDA>`. Also verify executable program-data address and deployed slot/hash against the release record.
+Expected `authority`: `<SOLANA_APPROVED_UPGRADE_VAULT_PDA>`. Also verify
+executable program-data address and deployed slot/hash against the release
+record.
 
 ### Robinhood owner and delegate
 
@@ -166,7 +177,11 @@ Expected for both: `<ROBINHOOD_SAN_SAFE>`. Separately inspect the Safe threshold
 
 Multisigs reduce single-key risk, not malicious-governance risk. Thresholds, signer independence, key custody, proposal delay, emergency powers, monitoring, and incident response remain human decisions.
 
-The production checker validates that on-chain roles equal approved addresses
-and differ from enumerated bootstrap identities. It cannot infer a Squads/Safe
-threshold or prove signer independence from those role addresses. The signed
-multisig-state evidence above is therefore a separate mandatory Phase 5B gate.
+The production checker validates that on-chain roles equal approved addresses,
+decodes the operations Squads threshold/member/voter state and Safe
+threshold/owner state, and rejects enumerated bootstrap identities as roles or
+signers. It cannot prove signer/device/organizational independence, recovery
+readiness, or Safe module/guard/fallback safety. It also exact-matches—but does
+not decode the internal governance of—a separate upgrade-authority vault. The
+signed governance evidence above therefore remains a separate mandatory Phase
+5B gate.

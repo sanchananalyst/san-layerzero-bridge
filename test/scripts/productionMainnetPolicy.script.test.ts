@@ -6,6 +6,7 @@ import { SAN_LAYERZERO_POLICY } from '../../scripts/layerZeroConfigPolicy'
 import {
     ApprovedProductionState,
     PRODUCTION_ROBINHOOD_ENDPOINT,
+    PRODUCTION_SQUADS_PROGRAM,
     PRODUCTION_SOLANA_ENDPOINT,
     PRODUCTION_SOLANA_OFT_PROGRAM,
     ProductionExpectedState,
@@ -41,10 +42,10 @@ const approved = (): ApprovedProductionState => ({
     solanaEscrow: solanaAddress(2),
     solanaUpgradeAuthority: solanaAddress(3),
     solanaStoreAdmin: solanaAddress(4),
-    solanaDelegate: solanaAddress(5),
+    solanaDelegate: solanaAddress(4),
     robinhoodOft: evmAddress('1'),
     robinhoodOwner: evmAddress('2'),
-    robinhoodDelegate: evmAddress('3'),
+    robinhoodDelegate: evmAddress('2'),
     solanaPauser: solanaAddress(6),
     solanaUnpauser: solanaAddress(7),
     robinhoodSourceConfirmations: 30n,
@@ -55,6 +56,19 @@ const approved = (): ApprovedProductionState => ({
     expectedSolanaFreezeAuthority: null,
     forbiddenSolanaBootstrapAuthorities: [solanaAddress(9)],
     forbiddenRobinhoodBootstrapAuthorities: [evmAddress('9')],
+    solanaSquadsMultisig: solanaAddress(14),
+    solanaSquadsVaultIndex: 0,
+    solanaSquadsThreshold: 3,
+    solanaSquadsMembers: [
+        solanaAddress(15),
+        solanaAddress(16),
+        solanaAddress(17),
+        solanaAddress(18),
+        solanaAddress(19),
+    ],
+    solanaSquadsVoters: [solanaAddress(15), solanaAddress(16), solanaAddress(17), solanaAddress(18), solanaAddress(19)],
+    robinhoodSafeThreshold: 3,
+    robinhoodSafeOwners: [evmAddress('4'), evmAddress('5'), evmAddress('6'), evmAddress('7'), evmAddress('8')],
     expectedSolanaProgramData: solanaAddress(8),
     expectedSolanaProgramDataSha256: `0x${'11'.repeat(32)}`,
     expectedSolanaEndpointProgramData: solanaAddress(10),
@@ -176,6 +190,12 @@ const fixture = (): ProductionMainnetObservation => {
             upgradeAuthority: policy.solanaUpgradeAuthority,
             storeAdmin: policy.solanaStoreAdmin,
             delegate: policy.solanaDelegate,
+            squadsMultisig: policy.solanaSquadsMultisig,
+            squadsVault: policy.solanaStoreAdmin,
+            squadsProgramOwner: PRODUCTION_SQUADS_PROGRAM,
+            squadsThreshold: policy.solanaSquadsThreshold,
+            squadsMembers: [...policy.solanaSquadsMembers],
+            squadsVotingMembers: [...policy.solanaSquadsVoters],
             paused: true,
             pauser: policy.solanaPauser,
             unpauser: policy.solanaUnpauser,
@@ -209,6 +229,8 @@ const fixture = (): ProductionMainnetObservation => {
             totalSupplyRaw: 0n,
             owner: policy.robinhoodOwner,
             delegate: policy.robinhoodDelegate,
+            safeThreshold: policy.robinhoodSafeThreshold,
+            safeOwners: [...policy.robinhoodSafeOwners],
             paused: true,
             runtimeCodeHash: policy.expectedRobinhoodRuntimeCodeHash,
             proxyImplementation: null,
@@ -267,6 +289,7 @@ const fixture = (): ProductionMainnetObservation => {
                 'LayerZero Endpoint ProgramData',
                 'LayerZero ULN302 program',
                 'LayerZero ULN302 ProgramData',
+                'Solana Squads multisig',
                 'Endpoint OApp registry',
                 'Endpoint default send-library config',
                 'Endpoint app send-library config',
@@ -514,6 +537,77 @@ describe('complete production mainnet policy', () => {
         expect(() =>
             validateProductionMainnetObservation(fixture(), policy, ProductionExpectedState.PRE_ACTIVATION_INERT)
         ).toThrow('At least one forbidden Solana bootstrap authority')
+        fails((value, policy) => {
+            policy.forbiddenSolanaBootstrapAuthorities = [value.solana.squadsMembers[0]]
+        })
+        fails((value, policy) => {
+            policy.forbiddenRobinhoodBootstrapAuthorities = [value.robinhood.safeOwners[0]]
+        })
+    })
+
+    it('fails closed on wrong or weak Squads governance evidence', () => {
+        fails((value) => {
+            value.solana.squadsVault = solanaAddress(20)
+        })
+        fails((value) => {
+            value.solana.squadsProgramOwner = solanaAddress(20)
+        })
+        fails((value) => {
+            value.solana.squadsThreshold = 2
+        })
+        fails((value) => {
+            value.solana.squadsVotingMembers.pop()
+        })
+        const policy = approved()
+        policy.solanaSquadsThreshold = 1
+        expect(() =>
+            validateProductionMainnetObservation(fixture(), policy, ProductionExpectedState.PRE_ACTIVATION_INERT)
+        ).toThrow('must require multiple signers')
+        const nonMemberVoterPolicy = approved()
+        nonMemberVoterPolicy.solanaSquadsVoters[0] = solanaAddress(20)
+        expect(() =>
+            validateProductionMainnetObservation(
+                fixture(),
+                nonMemberVoterPolicy,
+                ProductionExpectedState.PRE_ACTIVATION_INERT
+            )
+        ).toThrow('must be an approved member')
+    })
+
+    it('fails closed on wrong or weak Safe governance evidence', () => {
+        fails((value) => {
+            value.robinhood.safeThreshold = 2
+        })
+        fails((value) => {
+            value.robinhood.safeOwners[0] = evmAddress('a')
+        })
+        const policy = approved()
+        policy.robinhoodSafeThreshold = 1
+        expect(() =>
+            validateProductionMainnetObservation(fixture(), policy, ProductionExpectedState.PRE_ACTIVATION_INERT)
+        ).toThrow('must require multiple signers')
+    })
+
+    it('rejects zero governance addresses and a non-Safe owner/delegate split', () => {
+        const solanaPolicy = approved()
+        solanaPolicy.solanaSquadsMultisig = PublicKey.default.toBase58()
+        expect(() =>
+            validateProductionMainnetObservation(fixture(), solanaPolicy, ProductionExpectedState.PRE_ACTIVATION_INERT)
+        ).toThrow('nonzero Solana public key')
+        const evmPolicy = approved()
+        evmPolicy.robinhoodDelegate = evmAddress('3')
+        expect(() =>
+            validateProductionMainnetObservation(fixture(), evmPolicy, ProductionExpectedState.PRE_ACTIVATION_INERT)
+        ).toThrow('must be the same Safe')
+        const zeroSafeOwnerPolicy = approved()
+        zeroSafeOwnerPolicy.robinhoodSafeOwners[0] = ethers.constants.AddressZero
+        expect(() =>
+            validateProductionMainnetObservation(
+                fixture(),
+                zeroSafeOwnerPolicy,
+                ProductionExpectedState.PRE_ACTIVATION_INERT
+            )
+        ).toThrow('nonzero EVM address')
     })
 
     it('requires exact two-direction in-flight accounting and snapshot heights', () => {
